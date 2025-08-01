@@ -1,0 +1,5 @@
+/* resources/css/app.css */
+@import "bootstrap/dist/css/bootstrap.min.css";
+
+/* Vous pouvez ajouter votre propre CSS personnalisé ici
+   qui se chargera après Bootstrap */
