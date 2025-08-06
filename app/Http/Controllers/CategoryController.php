@@ -4,15 +4,28 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CategoryController extends Controller
 {
     /**
-     * Affiche la liste des catégories.
+     * Affiche la liste des catégories avec des options de filtrage et de recherche.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $categories = Category::paginate(10);
+        $query = Category::query(); // Démarre une nouvelle requête Eloquent
+
+        // Recherche par nom ou description
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('description', 'like', '%' . $search . '%');
+            });
+        }
+
+        $categories = $query->paginate(10)->withQueryString();
+        
         return view('categories.index', compact('categories'));
     }
 
@@ -77,7 +90,7 @@ class CategoryController extends Controller
      */
     public function destroy(Category $category)
     {
-        // Optionnel: Vérifier si des produits sont liés à cette catégorie avant de la supprimer
+        // Vérifier si des produits sont liés à cette catégorie avant de la supprimer
         if ($category->products()->count() > 0) {
             return redirect()->route('categories.index')
                              ->with('error', 'Impossible de supprimer cette catégorie car des produits y sont liés.');

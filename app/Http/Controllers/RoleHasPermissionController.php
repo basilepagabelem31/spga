@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\RoleHasPermission;
+use App\Models\RoleHasPermission; // Assurez-vous que ce modèle existe (voir note ci-dessous)
 use App\Models\Role;
 use App\Models\Permission;
 use Illuminate\Http\Request;
@@ -10,16 +10,33 @@ use Illuminate\Http\Request;
 class RoleHasPermissionController extends Controller
 {
     /**
-     * Affiche la liste des associations rôle-permission.
+     * Affiche la liste des attributions rôle-permission avec des options de filtrage.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $roleHasPermissions = RoleHasPermission::with(['role', 'permission'])->paginate(10);
-        return view('role_has_permissions.index', compact('roleHasPermissions'));
+        $query = RoleHasPermission::with(['role', 'permission']);
+
+        // Filtrer par rôle
+        if ($request->filled('role_id')) {
+            $query->where('role_id', $request->role_id);
+        }
+
+        // Filtrer par permission
+        if ($request->filled('permission_id')) {
+            $query->where('permission_id', $request->permission_id);
+        }
+
+        $roleHasPermissions = $query->paginate(10)->withQueryString();
+        
+        // Récupérer tous les rôles et permissions pour les menus déroulants de filtre et des modales
+        $roles = Role::all();
+        $permissions = Permission::all();
+
+        return view('role_has_permissions.index', compact('roleHasPermissions', 'roles', 'permissions'));
     }
 
     /**
-     * Affiche le formulaire pour associer un rôle à une permission.
+     * Affiche le formulaire de création d'une nouvelle attribution.
      */
     public function create()
     {
@@ -29,7 +46,7 @@ class RoleHasPermissionController extends Controller
     }
 
     /**
-     * Associe un rôle à une permission.
+     * Stocke une nouvelle attribution rôle-permission dans la base de données.
      */
     public function store(Request $request)
     {
@@ -38,47 +55,52 @@ class RoleHasPermissionController extends Controller
             'permission_id' => 'required|exists:permissions,id',
         ]);
 
-        // Vérifier si l'association existe déjà
+        // Vérifier si l'attribution existe déjà
         $exists = RoleHasPermission::where('role_id', $request->role_id)
                                   ->where('permission_id', $request->permission_id)
                                   ->exists();
+
         if ($exists) {
-            return redirect()->back()->withErrors(['message' => 'Cette association existe déjà.']);
+            return redirect()->back()->with('error', 'Cette attribution de permission à ce rôle existe déjà.');
         }
 
         RoleHasPermission::create($request->all());
 
         return redirect()->route('role_has_permissions.index')
-                         ->with('success', 'Association créée avec succès.');
+                         ->with('success', 'Permission attribuée au rôle avec succès.');
     }
 
     /**
-     * Affiche les détails d'une association spécifique (peut être combiné pour role_id et permission_id).
-     * Note: Laravel ne gère pas directement les clés primaires composites dans la résolution de modèle par défaut comme celle-ci.
-     * Vous devrez peut-être ajuster la route et la logique pour passer les deux IDs.
+     * Affiche les détails d'une attribution spécifique (redirection vers l'index).
      */
     public function show($role_id, $permission_id)
     {
-        $roleHasPermission = RoleHasPermission::where('role_id', $role_id)
-                                             ->where('permission_id', $permission_id)
-                                             ->with(['role', 'permission'])
-                                             ->firstOrFail();
-        return view('role_has_permissions.show', compact('roleHasPermission'));
+        // Pour une table pivot, la vue "show" est rarement utile.
+        // On redirige généralement vers la liste avec un message si besoin.
+        $assignment = RoleHasPermission::where('role_id', $role_id)
+                                       ->where('permission_id', $permission_id)
+                                       ->first();
+        if (!$assignment) {
+            return redirect()->route('role_has_permissions.index')->with('error', 'Attribution non trouvée.');
+        }
+        return redirect()->route('role_has_permissions.index')->with('info', "Détails de l'attribution : Rôle '{$assignment->role->name}' a la permission '{$assignment->permission->name}'.");
     }
 
-    // Pas de méthodes 'edit' ou 'update' typiques pour les tables pivots simples car l'association est binaire.
-    // Il s'agit généralement de créer ou supprimer l'association.
-
     /**
-     * Supprime une association rôle-permission.
+     * Supprime une attribution rôle-permission de la base de données.
      */
     public function destroy($role_id, $permission_id)
     {
-        RoleHasPermission::where('role_id', $role_id)
-                         ->where('permission_id', $permission_id)
-                         ->delete();
+        $deleted = RoleHasPermission::where('role_id', $role_id)
+                                    ->where('permission_id', $permission_id)
+                                    ->delete();
+
+        if ($deleted) {
+            return redirect()->route('role_has_permissions.index')
+                             ->with('success', 'Attribution de permission supprimée avec succès.');
+        }
 
         return redirect()->route('role_has_permissions.index')
-                         ->with('success', 'Association supprimée avec succès.');
+                         ->with('error', 'Attribution non trouvée ou impossible à supprimer.');
     }
 }

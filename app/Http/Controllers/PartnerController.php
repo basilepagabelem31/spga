@@ -4,19 +4,51 @@ namespace App\Http\Controllers;
 
 use App\Models\Partner;
 use App\Models\User; // Pour l'association avec un utilisateur existant
+use App\Models\Role; // Assurez-vous d'importer le modèle Role
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-
 
 class PartnerController extends Controller
 {
     /**
-     * Affiche la liste des partenaires.
+     * Affiche la liste des partenaires avec des options de filtrage et de recherche.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $partners = Partner::with('user')->paginate(10);
-        return view('partners.index', compact('partners'));
+        $query = Partner::with('user');
+
+        // Filtrer par type de partenaire
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        // Filtrer par localité/région (recherche partielle)
+        if ($request->filled('locality_region')) {
+            $query->where('locality_region', 'like', '%' . $request->locality_region . '%');
+        }
+
+        // Recherche par nom d'établissement, nom du contact, email ou téléphone
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('establishment_name', 'like', '%' . $search . '%')
+                  ->orWhere('contact_name', 'like', '%' . $search . '%')
+                  ->orWhere('email', 'like', '%' . $search . '%')
+                  ->orWhere('phone', 'like', '%' . $search . '%');
+            });
+        }
+
+        $partners = $query->paginate(10)->withQueryString();
+        
+        // Récupérer UNIQUEMENT les utilisateurs ayant le rôle 'partenaire' pour Select2
+        $users = User::whereHas('role', function ($q) {
+            $q->where('name', 'partenaire');
+        })->get();
+
+        // Récupérer les types de partenaires uniques pour le filtre
+        $partnerTypes = Partner::select('type')->distinct()->pluck('type');
+
+        return view('partners.index', compact('partners', 'users', 'partnerTypes'));
     }
 
     /**
@@ -24,7 +56,10 @@ class PartnerController extends Controller
      */
     public function create()
     {
-        $users = User::all(); // Vous pouvez filtrer les utilisateurs qui peuvent être des partenaires si nécessaire
+        // Récupérer UNIQUEMENT les utilisateurs ayant le rôle 'partenaire'
+        $users = User::whereHas('role', function ($q) {
+            $q->where('name', 'partenaire');
+        })->get();
         return view('partners.create', compact('users'));
     }
 
@@ -65,7 +100,10 @@ class PartnerController extends Controller
      */
     public function edit(Partner $partner)
     {
-        $users = User::all();
+        // Récupérer UNIQUEMENT les utilisateurs ayant le rôle 'partenaire'
+        $users = User::whereHas('role', function ($q) {
+            $q->where('name', 'partenaire');
+        })->get();
         return view('partners.edit', compact('partner', 'users'));
     }
 

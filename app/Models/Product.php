@@ -25,6 +25,7 @@ class Product extends Model
         'payment_modalities',
         'estimated_harvest_quantity',
         'estimated_harvest_period',
+        'current_stock_quantity',
     ];
 
     protected $casts = [
@@ -118,5 +119,16 @@ class Product extends Model
         }
         // Ajoutez ici la logique pour 'ferme_propre' si vous avez une table 'farms'
         return null;
+    }
+
+    /**
+     * Vérifie si le stock actuel du produit est en dessous ou égal au seuil d'alerte.
+     * @return bool
+     */
+    public function isLowStock(): bool
+    {
+        // Le stock est considéré bas si un seuil d'alerte est défini
+        // et que la quantité actuelle est inférieure ou égale à ce seuil.
+        return $this->alert_threshold !== null && $this->current_stock_quantity <= $this->alert_threshold;
     }
 }

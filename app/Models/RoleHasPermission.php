@@ -13,6 +13,9 @@ class RoleHasPermission extends Model
     public $incrementing = false; // Désactiver l'auto-incrémentation pour une clé primaire composite
     protected $primaryKey = ['role_id', 'permission_id']; // Définir la clé primaire composite
 
+// AJOUTEZ CETTE LIGNE POUR DÉSACTIVER LES TIMESTAMPS
+    public $timestamps = false; 
+
     protected $fillable = [
         'role_id',
         'permission_id',

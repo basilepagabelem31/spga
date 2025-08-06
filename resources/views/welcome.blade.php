@@ -152,7 +152,7 @@
             SPGA-SARL
         </h1>
         <p class="lead mb-4 fw-light fs-4 animate__animated animate__fadeInUp">
-            L'excellence agricole au service du Burkina Faso.
+            S'engager avec la SPGA-SARL, c'est garantir vos approvisionnements des champs à vos tables.
         </p>
         <div class="mt-5 animate__animated animate__fadeInUp animate__delay-1s">
             <a href="{{ route('login') }}" class="btn btn-primary btn-lg rounded-pill px-5 py-3 me-3 shadow-lg">

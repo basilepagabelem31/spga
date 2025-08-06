@@ -7,22 +7,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use App\Notifications\VerifyEmailNotification; // Ajoutez ceci en haut du fichier avec les autres 'use'
+use App\Notifications\VerifyEmailNotification;
 
-
-class User extends Authenticatable implements MustVerifyEmail // Implémente MustVerifyEmail si l'email est vérifié
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
-        'first_name', // Ajouté
+        'first_name',
         'email',
         'password',
-        'phone_number', // Ajouté
-        'address',      // Ajouté
-        'role_id',      // Ajouté
-        'is_active',    // Ajouté
+        'phone_number',
+        'address',
+        'role_id',
+        'is_active',
     ];
 
     protected $hidden = [
@@ -32,7 +31,7 @@ class User extends Authenticatable implements MustVerifyEmail // Implémente Mus
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'is_active' => 'boolean', // Ajouté
+        'is_active' => 'boolean',
         'password' => 'hashed',
     ];
 
@@ -45,11 +44,11 @@ class User extends Authenticatable implements MustVerifyEmail // Implémente Mus
     }
 
     /**
-     * Les partenaires créés par cet utilisateur.
+     * Le partenaire associé à cet utilisateur.
      */
-    public function partners()
+    public function partner()
     {
-        return $this->hasMany(Partner::class);
+        return $this->hasOne(Partner::class);
     }
 
     /**
@@ -117,11 +116,11 @@ class User extends Authenticatable implements MustVerifyEmail // Implémente Mus
     }
 
     /**
-     * Vérifie si l'utilisateur est un administrateur principal.
+     * Vérifie si l'utilisateur est un administrateur ou un superviseur.
      */
     public function isAdmin(): bool
     {
-        return $this->role && $this->role->name === 'admin_principal';
+        return $this->role && in_array($this->role->name, ['admin_principal', 'superviseur_commercial', 'superviseur_production']);
     }
 
     /**
@@ -133,11 +132,11 @@ class User extends Authenticatable implements MustVerifyEmail // Implémente Mus
     }
 
     /**
-     * Vérifie si l'utilisateur est un partenaire stratégique.
+     * Vérifie si l'utilisateur est un partenaire.
      */
     public function isPartner(): bool
     {
-        return $this->role && $this->role->name === 'partenaire_strategique';
+        return $this->role && $this->role->name === 'partenaire';
     }
 
     /**
@@ -172,17 +171,21 @@ class User extends Authenticatable implements MustVerifyEmail // Implémente Mus
         return $this->is_active;
     }
 
-
-
-
     /**
      * Send the email verification notification.
-     *
-     * @return void
      */
     public function sendEmailVerificationNotification()
     {
         $this->notify(new VerifyEmailNotification);
     }
+
+
+    /**
+ * Vérifie si l'utilisateur possède l'un des rôles donnés.
+ */
+public function hasAnyRole(array $roles): bool
+{
+    return $this->role && in_array($this->role->name, $roles);
+}
 
 }

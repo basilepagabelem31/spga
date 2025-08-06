@@ -7,16 +7,52 @@ use App\Models\Category;
 use App\Models\Partner; // Pour la provenance
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage; // Importez le facade Storage
 
 class ProductController extends Controller
 {
     /**
-     * Affiche la liste des produits.
+     * Affiche la liste des produits avec des options de filtrage et de recherche.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $products = Product::with('category')->paginate(10);
-        return view('products.index', compact('products'));
+        $query = Product::with('category', 'partners'); // Chargez aussi les partenaires liés si nécessaire pour l'affichage
+
+        // Recherche par nom ou description
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('description', 'like', '%' . $search . '%');
+            });
+        }
+
+        // Filtrer par catégorie
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        // Filtrer par type de provenance
+        if ($request->filled('provenance_type')) {
+            $query->where('provenance_type', $request->provenance_type);
+        }
+
+        // Filtrer par mode de production
+        if ($request->filled('production_mode')) {
+            $query->where('production_mode', $request->production_mode);
+        }
+
+        // Filtrer par statut
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $products = $query->paginate(10)->withQueryString();
+        
+        $categories = Category::all();
+        $partners = Partner::all(); // Pour le filtre de provenance si applicable
+
+        return view('products.index', compact('products', 'categories', 'partners'));
     }
 
     /**
@@ -25,7 +61,7 @@ class ProductController extends Controller
     public function create()
     {
         $categories = Category::all();
-        $partners = Partner::all(); // Pour la liste des partenaires si provenance_type est 'producteur_partenaire'
+        $partners = Partner::all();
         return view('products.create', compact('categories', 'partners'));
     }
 
@@ -34,7 +70,7 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category_id' => 'required|exists:categories,id',
@@ -45,7 +81,7 @@ class ProductController extends Controller
             'min_order_quantity' => 'nullable|numeric|min:0',
             'unit_price' => 'required|numeric|min:0',
             'sale_unit' => 'required|string|max:50',
-            'image' => 'nullable|string|max:255', // Gérer le téléchargement de fichiers ici si image réelle
+            'product_image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048', // Validation pour l'image
             'status' => ['required', Rule::in(['disponible', 'indisponible'])],
             'payment_modalities' => 'nullable|array',
             'estimated_harvest_quantity' => 'nullable|numeric|min:0',
@@ -53,11 +89,24 @@ class ProductController extends Controller
         ]);
 
         // Logique pour gérer provenance_id
-        if ($request->provenance_type === 'ferme_propre') {
-            $request->merge(['provenance_id' => null]); // ou un ID de ferme par défaut si vous avez une table 'farms'
+        if ($validatedData['provenance_type'] === 'ferme_propre') {
+            $validatedData['provenance_id'] = null;
         }
 
-        Product::create($request->all());
+        // Gérer le téléchargement de l'image
+        if ($request->hasFile('product_image')) {
+            $imagePath = $request->file('product_image')->store('products', 'public'); // Stocke dans storage/app/public/products
+            $validatedData['image'] = $imagePath;
+        }
+
+        // Convertir payment_modalities en JSON si ce n'est pas déjà fait
+        if (isset($validatedData['payment_modalities']) && is_array($validatedData['payment_modalities'])) {
+            $validatedData['payment_modalities'] = json_encode($validatedData['payment_modalities']);
+        } else {
+            $validatedData['payment_modalities'] = null;
+        }
+
+        Product::create($validatedData);
 
         return redirect()->route('products.index')
                          ->with('success', 'Produit créé avec succès.');
@@ -87,7 +136,7 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product)
     {
-        $request->validate([
+        $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category_id' => 'required|exists:categories,id',
@@ -98,18 +147,44 @@ class ProductController extends Controller
             'min_order_quantity' => 'nullable|numeric|min:0',
             'unit_price' => 'required|numeric|min:0',
             'sale_unit' => 'required|string|max:50',
-            'image' => 'nullable|string|max:255',
+            'product_image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048', // Validation pour l'image
             'status' => ['required', Rule::in(['disponible', 'indisponible'])],
             'payment_modalities' => 'nullable|array',
             'estimated_harvest_quantity' => 'nullable|numeric|min:0',
             'estimated_harvest_period' => 'nullable|string|max:255',
         ]);
 
-        if ($request->provenance_type === 'ferme_propre') {
-            $request->merge(['provenance_id' => null]);
+        // Logique pour gérer provenance_id
+        if ($validatedData['provenance_type'] === 'ferme_propre') {
+            $validatedData['provenance_id'] = null;
         }
 
-        $product->update($request->all());
+        // Gérer le remplacement/suppression de l'image
+        if ($request->hasFile('product_image')) {
+            // Supprimer l'ancienne image si elle existe
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+            }
+            $imagePath = $request->file('product_image')->store('products', 'public');
+            $validatedData['image'] = $imagePath;
+        } elseif ($request->input('clear_image')) { // Si la case 'supprimer l'image' est cochée
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+                $validatedData['image'] = null;
+            }
+        } else {
+            // Conserver le chemin de l'image existante si aucune nouvelle image n'est téléchargée et qu'elle n'est pas effacée
+            $validatedData['image'] = $product->image;
+        }
+
+        // Convertir payment_modalities en JSON si ce n'est pas déjà fait
+        if (isset($validatedData['payment_modalities']) && is_array($validatedData['payment_modalities'])) {
+            $validatedData['payment_modalities'] = json_encode($validatedData['payment_modalities']);
+        } else {
+            $validatedData['payment_modalities'] = null;
+        }
+
+        $product->update($validatedData);
 
         return redirect()->route('products.index')
                          ->with('success', 'Produit mis à jour avec succès.');
@@ -120,10 +195,20 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
-        // Optionnel: Vérifier les dépendances avant suppression (ex: dans OrderItems, Stocks, etc.)
-        if ($product->orderItems()->count() > 0 || $product->stocks()->count() > 0) {
+        // Vérifier les dépendances avant suppression (ex: dans OrderItems, Stocks, etc.)
+        if ($product->orderItems()->count() > 0) {
             return redirect()->route('products.index')
-                             ->with('error', 'Impossible de supprimer ce produit car il est lié à des commandes ou des stocks.');
+                             ->with('error', 'Impossible de supprimer ce produit car il est lié à des commandes.');
+        }
+        if ($product->stocks()->count() > 0) {
+            return redirect()->route('products.index')
+                             ->with('error', 'Impossible de supprimer ce produit car il est lié à des stocks.');
+        }
+        // Vous pouvez ajouter d'autres vérifications ici si nécessaire (ex: qualityControls, nonConformities)
+
+        // Supprimer l'image associée avant de supprimer le produit
+        if ($product->image) {
+            Storage::disk('public')->delete($product->image);
         }
 
         $product->delete();

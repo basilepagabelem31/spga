@@ -11,16 +11,65 @@ use Illuminate\Validation\Rule;
 class UserController extends Controller
 {
     /**
-     * Affiche la liste des utilisateurs.
+     * Affiche la liste des utilisateurs avec leur rôle.
+     * Cette méthode sera utilisée par les administrateurs pour la gestion des comptes.
      */
-    public function index()
+     /**
+     * Affiche la liste des utilisateurs avec leur rôle.
+     */
+   /**
+     * Affiche la liste des utilisateurs avec leur rôle, et permet le filtrage/recherche.
+     * Cette méthode sera utilisée par les administrateurs pour la gestion des comptes.
+     */
+    public function index(Request $request)
     {
-        $users = User::with('role')->paginate(10);
-        return view('users.index', compact('users'));
+        // Démarre une nouvelle requête Eloquent pour le modèle User,
+        // en incluant la relation 'role' pour éviter les requêtes N+1.
+        $query = User::with('role');
+
+        // Filtrer par rôle :
+        // Si le paramètre 'role_id' est présent dans la requête HTTP,
+        // ajoute une condition WHERE pour filtrer les utilisateurs par ce rôle.
+        if ($request->filled('role_id')) {
+            $query->where('role_id', $request->role_id);
+        }
+
+        // Filtrer par statut (actif/inactif) :
+        // Si le paramètre 'is_active' est présent,
+        // ajoute une condition WHERE pour filtrer les utilisateurs par leur statut.
+        // La valeur est convertie en booléen car 'is_active' est un champ booléen.
+        if ($request->filled('is_active')) {
+            $query->where('is_active', $request->is_active === '1');
+        }
+
+        // Recherche par nom, prénom, email ou numéro de téléphone :
+        // Si le paramètre 'search' est présent,
+        // ajoute des conditions OR WHERE pour rechercher la chaîne dans plusieurs colonnes.
+        // La recherche utilise 'like' avec des jokers (%) pour une correspondance partielle.
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('first_name', 'like', '%' . $search . '%')
+                  ->orWhere('email', 'like', '%' . $search . '%')
+                  ->orWhere('phone_number', 'like', '%' . $search . '%');
+            });
+        }
+
+        // Exécute la requête, pagine les résultats (10 par page)
+        // et ajoute les paramètres de la requête actuelle à l'URL de pagination.
+        $users = $query->paginate(10)->withQueryString();
+        
+        // Récupère tous les rôles pour les menus déroulants des filtres et modales.
+        $roles = Role::all();
+
+        // Retourne la vue 'users.index' en passant les utilisateurs paginés et tous les rôles.
+        return view('users.index', compact('users', 'roles'));
     }
 
     /**
      * Affiche le formulaire de création d'un nouvel utilisateur.
+     * Les rôles sont chargés pour être affichés dans un menu déroulant.
      */
     public function create()
     {
@@ -29,7 +78,7 @@ class UserController extends Controller
     }
 
     /**
-     * Stocke un nouvel utilisateur dans la base de données.
+     * Stocke un nouvel utilisateur dans la base de données après validation.
      */
     public function store(Request $request)
     {
@@ -41,7 +90,7 @@ class UserController extends Controller
             'phone_number' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:255',
             'role_id' => 'required|exists:roles,id',
-            'is_active' => 'boolean', // Peut être défini à false par défaut si en attente de validation
+            'is_active' => 'boolean',
         ]);
 
         User::create([
@@ -52,8 +101,7 @@ class UserController extends Controller
             'phone_number' => $request->phone_number,
             'address' => $request->address,
             'role_id' => $request->role_id,
-            'is_active' => $request->boolean('is_active', false), // Défaut à false pour les nouveaux comptes nécessitant validation
-            // 'email_verified_at' => now(), // Décommentez si vous voulez que les emails soient vérifiés à la création
+            'is_active' => $request->boolean('is_active', false),
         ]);
 
         return redirect()->route('users.index')
@@ -78,7 +126,7 @@ class UserController extends Controller
     }
 
     /**
-     * Met à jour un utilisateur existant dans la base de données.
+     * Met à jour un utilisateur existant dans la base de données après validation.
      */
     public function update(Request $request, User $user)
     {

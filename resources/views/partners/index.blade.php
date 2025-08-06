@@ -1,181 +1,340 @@
-@extends('layouts.app')
-
-@section('title', 'Gestion des Partenaires')
+@extends('layouts.app') {{-- Assurez-vous d'avoir un layout principal --}}
 
 @section('content')
-<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">Gestion des Partenaires</h1>
-        <button @click="showAddModal = true" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center">
-            <i class="fas fa-plus mr-2"></i> Ajouter un Partenaire
+
+<style>
+    /* Styles généraux pour le corps de la page */
+    body {
+        background-color: #f0f2f5; /* Couleur de fond douce */
+    }
+
+    /* Styles pour les boutons */
+    .btn {
+        border-radius: 0.75rem; /* Coins arrondis pour les boutons */
+        transition: all 0.3s ease; /* Transition douce pour les effets au survol */
+        font-weight: 500;
+    }
+
+    .btn-primary {
+        background-image: linear-gradient(to right, #6a11cb 0%, #2575fc 100%); /* Dégradé de couleur */
+        border: none;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Ombre douce */
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-3px); /* Effet de léger soulèvement */
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-outline-warning {
+        color: #ffc107;
+        border-color: #ffc107;
+    }
+    .btn-outline-warning:hover {
+        background-color: #ffc107;
+        color: #fff;
+    }
+
+    .btn-outline-danger {
+        color: #dc3545;
+        border-color: #dc3545;
+    }
+    .btn-outline-danger:hover {
+        background-color: #dc3545;
+        color: #fff;
+    }
+
+    .btn-outline-secondary {
+        color: #6c757d;
+        border-color: #6c757d;
+    }
+    .btn-outline-secondary:hover {
+        background-color: #6c757d;
+        color: #fff;
+    }
+
+    .btn-info {
+        background-color: #17a2b8;
+        border-color: #17a2b8;
+        color: #fff;
+    }
+    .btn-info:hover {
+        background-color: #138496;
+        border-color: #138496;
+    }
+
+
+    /* Styles pour les cartes (conteneur du tableau) */
+    .card {
+        border: none;
+        border-radius: 1.25rem; /* Coins arrondis plus prononcés */
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); /* Ombre plus douce et plus présente */
+        overflow: hidden; /* S'assure que les coins arrondus sont respectés par le contenu */
+    }
+
+    /* Styles pour le tableau */
+    .table {
+        margin-bottom: 0; /* Supprime la marge en bas du tableau */
+        width: 100%; /* S'assure que le tableau prend toute la largeur disponible */
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #e9ecef; /* Couleur de survol plus distincte */
+        transform: translateY(-2px) scale(1.005); /* Léger soulèvement et agrandissement au survol */
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* Ombre légère au survol */
+        transition: all 0.3s ease-in-out;
+    }
+
+    .table thead th {
+        border-bottom: 2px solid #dee2e6; /* Bordure plus prononcée pour l'en-tête */
+        padding: 1rem 1.5rem;
+        font-weight: 600;
+        color: #495057;
+        background-color: #f8f9fa; /* Fond légèrement grisé pour l'en-tête */
+        
+        /* NOUVEAU : Empêche le texte de l'en-tête de revenir à la ligne */
+        white-space: nowrap; 
+    }
+
+    .table tbody td {
+        padding: 1rem 1.5rem;
+        vertical-align: middle; /* Centre verticalement le contenu des cellules */
+    }
+
+    /* Badges */
+    .badge {
+        font-size: 0.85em;
+        padding: 0.5em 0.8em;
+        border-radius: 0.5rem;
+        font-weight: 600;
+    }
+
+    /* Conteneur des actions pour un meilleur alignement */
+    .btn-group {
+        display: flex;
+        gap: 0.5rem; /* Espacement entre les boutons */
+    }
+
+    /* Pagination */
+    .pagination .page-item .page-link {
+        border-radius: 0.5rem;
+        margin: 0 0.2rem;
+        color: #007bff;
+        border: 1px solid #dee2e6;
+    }
+
+    .pagination .page-item.active .page-link {
+        background-color: #007bff;
+        border-color: #007bff;
+        color: #fff;
+    }
+
+    /* Titre de la page */
+    h2 {
+        font-weight: 700;
+        color: #343a40;
+    }
+
+    /* Alertes */
+    .alert {
+        border-radius: 0.75rem;
+        font-weight: 500;
+    }
+
+    /* Tooltip customisation */
+    .tooltip-inner {
+        background-color: #343a40;
+        color: #fff;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+    }
+    .tooltip.bs-tooltip-top .tooltip-arrow::before {
+        border-top-color: #343a40;
+    }
+    .tooltip.bs-tooltip-bottom .tooltip-arrow::before {
+        border-bottom-color: #343a40;
+    }
+
+    /* Style pour les champs "Non renseigné" */
+    .text-not-set {
+        font-style: italic;
+        color: #888; /* Couleur grise pour indiquer que ce n'est pas renseigné */
+    }
+
+    /* NOUVEAU : Styles spécifiques pour les colonnes du tableau des partenaires pour éviter le wrapping */
+    .table thead th:nth-child(1), /* Établissement */
+    .table tbody td:nth-child(1) {
+        min-width: 180px; 
+    }
+    .table thead th:nth-child(2), /* Contact */
+    .table tbody td:nth-child(2) {
+        min-width: 150px; 
+    }
+    .table thead th:nth-child(3), /* Fonction */
+    .table tbody td:nth-child(3) {
+        min-width: 120px; 
+    }
+    .table thead th:nth-child(4), /* Téléphone */
+    .table tbody td:nth-child(4) {
+        min-width: 120px; 
+    }
+    .table thead th:nth-child(5), /* Email */
+    .table tbody td:nth-child(5) {
+        min-width: 200px; 
+    }
+    .table thead th:nth-child(6), /* Localité */
+    .table tbody td:nth-child(6) {
+        min-width: 150px; 
+    }
+    .table thead th:nth-child(7), /* Type */
+    .table tbody td:nth-child(7) {
+        min-width: 100px; 
+    }
+    .table thead th:nth-child(8), /* Expérience (années) */
+    .table tbody td:nth-child(8) {
+        min-width: 150px; 
+    }
+    .table thead th:nth-child(9), /* Utilisateur associé */
+    .table tbody td:nth-child(9) {
+        min-width: 150px; 
+    }
+    .table thead th:nth-child(10), /* Actions */
+    .table tbody td:nth-child(10) {
+        min-width: 120px; /* Pour les boutons d'action */
+    }
+</style>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+        <h2 class="mb-2">🤝 Gestion des Partenaires</h2>
+        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#createPartnerModal">
+            <i class="fas fa-handshake me-1"></i> Ajouter un partenaire
         </button>
     </div>
 
     @if (session('success'))
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
-            <strong class="font-bold">Succès!</strong>
-            <span class="block sm:inline">{{ session('success') }}</span>
-        </div>
-    @endif
-    @if (session('error'))
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-            <strong class="font-bold">Erreur!</strong>
-            <span class="block sm:inline">{{ session('error') }}</span>
-        </div>
+        <div class="alert alert-success shadow-sm">{{ session('success') }}</div>
     @endif
 
-    <div class="bg-white shadow-xl rounded-lg overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full leading-normal">
-                <thead>
-                    <tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
-                        <th class="py-3 px-6 text-left">Nom</th>
-                        <th class="py-3 px-6 text-left">Email</th>
-                        <th class="py-3 px-6 text-left">Téléphone</th>
-                        <th class="py-3 px-6 text-left">Adresse</th>
-                        <th class="py-3 px-6 text-center">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="text-gray-600 text-sm font-light">
-                    @forelse ($partners as $partner)
-                        <tr class="border-b border-gray-200 hover:bg-gray-100">
-                            <td class="py-3 px-6 text-left whitespace-nowrap">{{ $partner->name }}</td>
-                            <td class="py-3 px-6 text-left">{{ $partner->email }}</td>
-                            <td class="py-3 px-6 text-left">{{ $partner->phone_number }}</td>
-                            <td class="py-3 px-6 text-left">{{ $partner->address }}</td>
-                            <td class="py-3 px-6 text-center">
-                                <div class="flex item-center justify-center space-x-4">
-                                    <button
-                                        @click="openEditModal({{ $partner->id }}, '{{ $partner->name }}', '{{ $partner->email }}', '{{ $partner->phone_number }}', '{{ $partner->address }}')"
-                                        class="w-6 h-6 transform hover:text-blue-500 hover:scale-110"
-                                        title="Modifier"
-                                    >
-                                        <i class="fas fa-pencil-alt"></i>
-                                    </button>
-                                    <button
-                                        @click="openDeleteModal({{ $partner->id }})"
-                                        class="w-6 h-6 transform hover:text-red-500 hover:scale-110"
-                                        title="Supprimer"
-                                    >
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="py-4 px-6 text-center text-gray-500">Aucun partenaire trouvé.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+    @if (session('info'))
+        <div class="alert alert-info shadow-sm">{{ session('info') }}</div>
+    @endif
+    
+    @if (session('error'))
+        <div class="alert alert-danger shadow-sm">{{ session('error') }}</div>
+    @endif
+
+    {{-- Section de filtrage --}}
+    <form action="{{ route('partners.index') }}" method="GET" class="mb-4 p-4 bg-white rounded-4 shadow-sm">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="search" class="form-label">Recherche rapide</label>
+                <input type="text" class="form-control" id="search" name="search" placeholder="Nom établissement, contact, email, téléphone..." value="{{ request('search') }}">
+            </div>
+            <div class="col-md-3">
+                <label for="filter_type" class="form-label">Filtrer par type</label>
+                <select class="form-select" id="filter_type" name="type">
+                    <option value="">Tous les types</option>
+                    @foreach ($partnerTypes as $type)
+                        <option value="{{ $type }}" {{ request('type') == $type ? 'selected' : '' }}>{{ $type }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="filter_locality" class="form-label">Localité/Région</label>
+                <input type="text" class="form-control" id="filter_locality" name="locality_region" placeholder="Entrez une localité..." value="{{ request('locality_region') }}">
+            </div>
+            <div class="col-md-2 d-grid gap-2">
+                <button type="submit" class="btn btn-info"><i class="fas fa-filter me-1"></i> Filtrer</button>
+                <a href="{{ route('partners.index') }}" class="btn btn-outline-secondary"><i class="fas fa-sync-alt me-1"></i> Réinitialiser</a>
+            </div>
         </div>
-        <div class="p-4">
-            {{ $partners->links() }}
+    </form>
+
+
+    <div class="card shadow rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Établissement</th>
+                            <th>Contact</th>
+                            <th>Fonction</th>
+                            <th>Téléphone</th>
+                            <th>Email</th>
+                            <th>Localité</th>
+                            <th>Type</th>
+                            <th>Expérience (années)</th>
+                            <th>Utilisateur associé</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($partners as $partner)
+                            <tr>
+                                <td>{{ $partner->establishment_name }}</td>
+                                <td class="{{ $partner->contact_name ? '' : 'text-not-set' }}">{{ $partner->contact_name ?? 'Non renseigné' }}</td>
+                                <td class="{{ $partner->function ? '' : 'text-not-set' }}">{{ $partner->function ?? 'Non renseigné' }}</td>
+                                <td class="{{ $partner->phone ? '' : 'text-not-set' }}">{{ $partner->phone ?? 'Non renseigné' }}</td>
+                                <td class="{{ $partner->email ? '' : 'text-not-set' }}">{{ $partner->email ?? 'Non renseigné' }}</td>
+                                <td class="{{ $partner->locality_region ? '' : 'text-not-set' }}">{{ $partner->locality_region ?? 'Non renseigné' }}</td>
+                                <td><span class="badge bg-info text-dark">{{ $partner->type }}</span></td>
+                                <td class="{{ $partner->years_of_experience !== null ? '' : 'text-not-set' }}">
+                                    {{ $partner->years_of_experience ?? 'Non renseigné' }}
+                                </td>
+                                <td>
+                                    @if ($partner->user)
+                                        <span class="badge bg-primary">{{ $partner->user->full_name ?? $partner->user->email }}</span>
+                                    @else
+                                        <span class="text-not-set">Aucun</span>
+                                    @endif
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="btn-group" role="group">
+                                        <!-- Modifier -->
+                                        <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editPartnerModal{{ $partner->id }}" title="Modifier le partenaire">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+
+                                        <!-- Supprimer -->
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deletePartnerModal{{ $partner->id }}" title="Supprimer le partenaire">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            {{-- Modales pour chaque partenaire --}}
+                            @include('partners.partials.edit_modal', ['partner' => $partner, 'users' => $users])
+                            @include('partners.partials.delete_modal', ['partner' => $partner])
+
+                        @empty
+                            <tr>
+                                <td colspan="10" class="text-center text-muted py-4">Aucun partenaire trouvé.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <div x-data="{ showAddModal: false, showEditModal: false, showDeleteModal: false, currentPartner: {}, deleteFormAction: '' }"
-         x-init="
-            window.openEditModal = (id, name, email, phone_number, address) => {
-                currentPartner = { id: id, name: name, email: email, phone_number: phone_number, address: address };
-                showEditModal = true;
-            };
-            window.openDeleteModal = (id) => {
-                deleteFormAction = '{{ url('partners') }}/' + id;
-                showDeleteModal = true;
-            };
-         ">
-
-        <div x-show="showAddModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
-            <div class="flex items-center justify-center min-h-screen px-4">
-                <div class="fixed inset-0 transition-opacity" @click="showAddModal = false">
-                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-                </div>
-                <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg z-50">
-                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Ajouter un nouveau Partenaire</h3>
-                    <form action="{{ route('partners.store') }}" method="POST">
-                        @csrf
-                        <div class="mb-4">
-                            <label for="add_name" class="block text-gray-700 text-sm font-bold mb-2">Nom du partenaire:</label>
-                            <input type="text" name="name" id="add_name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
-                        </div>
-                        <div class="mb-4">
-                            <label for="add_email" class="block text-gray-700 text-sm font-bold mb-2">Email:</label>
-                            <input type="email" name="email" id="add_email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
-                        </div>
-                        <div class="mb-4">
-                            <label for="add_phone_number" class="block text-gray-700 text-sm font-bold mb-2">Téléphone:</label>
-                            <input type="text" name="phone_number" id="add_phone_number" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        </div>
-                        <div class="mb-4">
-                            <label for="add_address" class="block text-gray-700 text-sm font-bold mb-2">Adresse:</label>
-                            <input type="text" name="address" id="add_address" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        </div>
-                        <div class="flex justify-end">
-                            <button type="button" @click="showAddModal = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg mr-2 transition duration-300 ease-in-out">Annuler</button>
-                            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">Ajouter</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div x-show="showEditModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
-            <div class="flex items-center justify-center min-h-screen px-4">
-                <div class="fixed inset-0 transition-opacity" @click="showEditModal = false">
-                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-                </div>
-                <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg z-50">
-                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Modifier le Partenaire</h3>
-                    <form x-bind:action="'{{ url('partners') }}/' + currentPartner.id" method="POST">
-                        @csrf
-                        @method('PUT')
-                        <div class="mb-4">
-                            <label for="edit_name" class="block text-gray-700 text-sm font-bold mb-2">Nom du partenaire:</label>
-                            <input type="text" name="name" id="edit_name" x-model="currentPartner.name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
-                        </div>
-                        <div class="mb-4">
-                            <label for="edit_email" class="block text-gray-700 text-sm font-bold mb-2">Email:</label>
-                            <input type="email" name="email" id="edit_email" x-model="currentPartner.email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
-                        </div>
-                        <div class="mb-4">
-                            <label for="edit_phone_number" class="block text-gray-700 text-sm font-bold mb-2">Téléphone:</label>
-                            <input type="text" name="phone_number" id="edit_phone_number" x-model="currentPartner.phone_number" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        </div>
-                        <div class="mb-4">
-                            <label for="edit_address" class="block text-gray-700 text-sm font-bold mb-2">Adresse:</label>
-                            <input type="text" name="address" id="edit_address" x-model="currentPartner.address" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        </div>
-                        <div class="flex justify-end">
-                            <button type="button" @click="showEditModal = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg mr-2 transition duration-300 ease-in-out">Annuler</button>
-                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">Mettre à jour</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div x-show="showDeleteModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
-            <div class="flex items-center justify-center min-h-screen px-4">
-                <div class="fixed inset-0 transition-opacity" @click="showDeleteModal = false">
-                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-                </div>
-                <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md z-50">
-                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Confirmer la suppression</h3>
-                    <p class="mb-6 text-gray-700">Êtes-vous sûr de vouloir supprimer ce partenaire ? Cette action est irréversible.</p>
-                    <div class="flex justify-end">
-                        <button type="button" @click="showDeleteModal = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg mr-2 transition duration-300 ease-in-out">Annuler</button>
-                        <form x-bind:action="deleteFormAction" method="POST">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">Supprimer</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+    <div class="d-flex justify-content-center mt-4">
+        {{ $partners->links() }}
     </div>
 </div>
+
+{{-- Modale d'ajout de partenaire --}}
+@include('partners.partials.create_modal', ['users' => $users])
+
+{{-- Script pour initialiser les tooltips Bootstrap --}}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+    });
+</script>
 @endsection

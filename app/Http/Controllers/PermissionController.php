@@ -8,11 +8,28 @@ use Illuminate\Http\Request;
 class PermissionController extends Controller
 {
     /**
-     * Affiche la liste des permissions.
+     * Affiche la liste des permissions avec des options de filtrage et de recherche.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $permissions = Permission::paginate(10);
+        $query = Permission::query(); // Démarre une nouvelle requête Eloquent
+
+        // Recherche par nom ou description
+        // Si le paramètre 'search' est présent dans la requête HTTP,
+        // ajoute des conditions OR WHERE pour rechercher la chaîne dans ces colonnes.
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('description', 'like', '%' . $search . '%');
+            });
+        }
+
+        // Exécute la requête, pagine les résultats (10 par page)
+        // et ajoute les paramètres de la requête actuelle à l'URL de pagination.
+        $permissions = $query->paginate(10)->withQueryString();
+        
+        // Retourne la vue 'permissions.index' en passant les permissions paginées.
         return view('permissions.index', compact('permissions'));
     }
 
@@ -77,6 +94,10 @@ class PermissionController extends Controller
      */
     public function destroy(Permission $permission)
     {
+        // Optionnel: Vérifier les dépendances (si des rôles sont liés à cette permission)
+        // Vous pouvez ajouter une logique ici si vous avez des contraintes de suppression.
+        // Par exemple: if ($permission->roles()->count() > 0) { ... }
+
         $permission->delete();
 
         return redirect()->route('permissions.index')
