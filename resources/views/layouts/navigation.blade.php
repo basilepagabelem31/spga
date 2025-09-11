@@ -8,10 +8,19 @@
                 <i class="fas fa-tachometer-alt me-2"></i> Tableau de bord
             </a>
 
-            <a href="{{ route('users.index') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('users.*')) active @endif">
-                <i class="fas fa-users me-2"></i> Gestion des Utilisateurs
-            </a>
-
+            {{-- Section de la gestion des utilisateurs --}}
+            <div class="list-group-item list-group-item-action bg-dark text-white">
+                <a data-bs-toggle="collapse" href="#collapseUsers" role="button" aria-expanded="true" aria-controls="collapseUsers" class="text-white text-decoration-none d-block">
+                    <i class="fas fa-users me-2"></i> Gestion des Utilisateurs
+                </a>
+                <div class="collapse show" id="collapseUsers">
+                    <a href="{{ route('users.index') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('users.index') && !request()->has('role')) active @endif">- Tous les utilisateurs</a>
+                    <a href="{{ route('users.index', ['role' => 'client']) }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->route('role') === 'client') active @endif">- Clients</a>
+                    <a href="{{ route('users.index', ['role' => 'chauffeur']) }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->route('role') === 'chauffeur') active @endif">- Chauffeurs</a>
+                    <a href="{{ route('users.index', ['role' => 'admin_principal,superviseur_commercial,superviseur_production']) }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->route('role') === 'admin_principal,superviseur_commercial,superviseur_production') active @endif">- Admins & Superviseurs</a>
+                </div>
+            </div>
+            
             <div class="list-group-item list-group-item-action bg-dark text-white">
                 <a data-bs-toggle="collapse" href="#collapseRoles" role="button" aria-expanded="true" aria-controls="collapseRoles" class="text-white text-decoration-none d-block">
                     <i class="fas fa-user-tag me-2"></i> Rôles & Permissions
@@ -53,15 +62,26 @@
                     <a href="{{ route('stocks.index') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('stocks.*')) active @endif">- Stocks</a>
                 </div>
             </div>
+            
+            {{-- Nouvelle section pour la logistique --}}
+            <div class="list-group-item list-group-item-action bg-dark text-white">
+                <a data-bs-toggle="collapse" href="#collapseLogistics" role="button" aria-expanded="true" aria-controls="collapseLogistics" class="text-white text-decoration-none d-block">
+                    <i class="fas fa-truck-fast me-2"></i> Logistique & Livraisons
+                </a>
+                <div class="collapse show" id="collapseLogistics">
+                    <a href="{{ route('delivery-routes.index') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('delivery-routes.*')) active @endif">- Tournées</a>
+                    <a href="{{ route('deliveries.index') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('deliveries.*')) active @endif">- Livraisons</a>
+                </div>
+            </div>
 
             <div class="list-group-item list-group-item-action bg-dark text-white">
                 <a data-bs-toggle="collapse" href="#collapseProduction" role="button" aria-expanded="true" aria-controls="collapseProduction" class="text-white text-decoration-none d-block">
                     <i class="fas fa-cogs me-2"></i> Production & Qualité
                 </a>
                 <div class="collapse show" id="collapseProduction">
-                    <a href="{{ route('production-follow-ups.index') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('production-follow-ups.*')) active @endif">- Suivi de production</a>
-                    <a href="{{ route('quality-controls.index') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('quality-controls.*')) active @endif">- Contrôles qualité</a>
-                    <a href="{{ route('non-conformities.index') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('non-conformities.*')) active @endif">- Non-conformités</a>
+                    <a href="{{ route('production_follow_ups.index') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('production_follow_ups.*')) active @endif">- Suivi de production</a>
+                    <a href="{{ route('quality_controls.index') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('quality_controls.*')) active @endif">- Contrôles qualité</a>
+                    <a href="{{ route('non_conformities.index') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('non_conformities.*')) active @endif">- Non-conformités</a>
                 </div>
             </div>
             
@@ -78,13 +98,26 @@
         {{-- Logique pour les partenaires --}}
         @elseif (auth()->user()->isPartner())
             <a href="{{ route('partenaire.dashboard') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('partenaire.dashboard')) active @endif">
-                <i class="fas fa-tachometer-alt me-2"></i> Tableau de bord Partenaire
+                <i class="fas fa-tachometer-alt me-2"></i> Tableau de bord
             </a>
-            <a href="{{ route('partenaire.products') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('partenaire.products')) active @endif">
-                <i class="fas fa-box me-2"></i> Mes Produits
-            </a>
+            
+            {{-- Début de la nouvelle section Produits pour les partenaires --}}
+            <div class="list-group-item list-group-item-action bg-dark text-white">
+                <a data-bs-toggle="collapse" href="#collapsePartnerProducts" role="button" aria-expanded="true" aria-controls="collapsePartnerProducts" class="text-white text-decoration-none d-block">
+                    <i class="fas fa-box-open me-2"></i> Mes Produits
+                </a>
+                <div class="collapse show" id="collapsePartnerProducts">
+                    <a href="{{ route('partenaire.categories.index') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('partenaire.categories.*')) active @endif">- Catégories</a>
+                    <a href="{{ route('partenaire.products') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('partenaire.products')) active @endif">- Produits</a>
+                </div>
+            </div>
+            {{-- Fin de la nouvelle section Produits --}}
+
             <a href="{{ route('partenaire.contracts') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('partenaire.contracts')) active @endif">
                 <i class="fas fa-file-contract me-2"></i> Mes Contrats
+            </a>
+            <a href="{{ route('partenaire.orders') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('partenaire.orders')) active @endif">
+                <i class="fas fa-shopping-cart me-2"></i> Mes Commandes
             </a>
 
         {{-- Logique pour les clients --}}

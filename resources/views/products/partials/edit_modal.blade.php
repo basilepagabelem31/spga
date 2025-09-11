@@ -103,6 +103,11 @@
                         @endif
                     </div>
                     <div class="mb-3">
+                        <label for="alert_threshold_edit_{{ $product->id }}" class="form-label">Seuil d'alerte (Stock) <span class="text-danger">*</span></label> {{-- NOUVEAU --}}
+                        <input type="number" step="0.01" class="form-control" id="alert_threshold_edit_{{ $product->id }}" name="alert_threshold" value="{{ old('alert_threshold', $product->alert_threshold ?? 0) }}" min="0" required>
+                        <small class="form-text text-muted">Quantité minimale avant alerte de stock bas.</small>
+                    </div>
+                    <div class="mb-3">
                         <label for="status" class="form-label">Statut <span class="text-danger">*</span></label>
                         <select class="form-select" id="status" name="status" required>
                             <option value="disponible" @selected(old('status', $product->status) == 'disponible')>Disponible</option>
@@ -114,9 +119,7 @@
                         <div>
                             @php
                                 // Assurez-vous que $product->payment_modalities est un tableau
-                                $productPaymentModalities = is_string($product->payment_modalities) 
-                                    ? json_decode($product->payment_modalities, true) 
-                                    : ($product->payment_modalities ?? []);
+                                $productPaymentModalities = json_decode($product->payment_modalities, true) ?? [];
                                 $oldPaymentModalities = old('payment_modalities', $productPaymentModalities);
                             @endphp
                             <div class="form-check form-check-inline">

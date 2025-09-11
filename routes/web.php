@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 
 // Contrôleurs principaux
+use App\Http\Controllers\PartnerManagedProductController; // <-- Nouveau contrôleur
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleHasPermissionController;
@@ -24,6 +25,7 @@ use App\Http\Controllers\QualityControlController;
 use App\Http\Controllers\NonConformityController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\Partner\PartnerOrdersController ;
 
 // Dashboards par rôle
 use App\Http\Controllers\Admin\AdminController;
@@ -52,9 +54,17 @@ Route::middleware('auth')->group(function () {
 // --- Admins & Superviseurs ---
 Route::middleware(['auth', 'role:admin_principal,superviseur_commercial,superviseur_production'])->group(function () {
 
-    Route::get('/admin/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
 
+    Route::post('/orders/{order}/validate', [OrderController::class, 'validateOrder'])
+    ->name('orders.validate');
+    
+    Route::get('/admin/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
+       // Déclarez d'abord les routes spécifiques.
+    Route::get('/users/clients', [UserController::class, 'index'])->name('users.clients');
+    Route::get('/users/chauffeurs', [UserController::class, 'index'])->name('users.chauffeurs');
+    Route::get('/users/admins', [UserController::class, 'index'])->name('users.admins');
     Route::resource('users', UserController::class);
+    
     Route::put('users/{user}/activate', [UserController::class, 'activate'])->name('users.activate');
     Route::put('users/{user}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate');
 
@@ -66,12 +76,17 @@ Route::middleware(['auth', 'role:admin_principal,superviseur_commercial,supervis
     Route::resource('products', ProductController::class);
     Route::resource('partners', PartnerController::class);
     Route::resource('contracts', ContractController::class);
-    Route::resource('production-follow-ups', ProductionFollowUpController::class)->parameters([
-        'production-follow-ups' => 'productionFollowUp'
+     Route::resource('production_follow_ups', ProductionFollowUpController::class)->parameters([
+        'production_follow_ups' => 'productionFollowUp'
     ]);
-    Route::resource('estimated-harvest-dates', EstimatedHarvestDateController::class)->parameters([
-        'estimated-harvest-dates' => 'estimatedHarvestDate'
-    ]);
+    
+    // Routes imbriquées pour EstimatedHarvestDate sous ProductionFollowUp
+    // Routes imbriquées pour les dates de récolte estimées
+    Route::prefix('production_follow_ups/{productionFollowUp}')->name('production_follow_ups.')->group(function () {
+        Route::resource('estimated_harvest_dates', EstimatedHarvestDateController::class)->parameters([
+            'estimated_harvest_dates' => 'estimatedHarvestDate'
+        ]);
+    });
     Route::resource('stocks', StockController::class);
     Route::resource('orders', OrderController::class);
     Route::resource('order-items', OrderItemController::class)->parameters([
@@ -81,19 +96,19 @@ Route::middleware(['auth', 'role:admin_principal,superviseur_commercial,supervis
     Route::resource('delivery-routes', DeliveryRouteController::class)->parameters([
         'delivery-routes' => 'deliveryRoute'
     ]);
-    Route::resource('quality-controls', QualityControlController::class)->parameters([
-        'quality-controls' => 'qualityControl'
+    Route::resource('quality_controls', QualityControlController::class)->parameters([
+        'quality_controls' => 'qualityControl'
     ]);
-    Route::resource('non-conformities', NonConformityController::class)->parameters([
-        'non-conformities' => 'nonConformity'
+    Route::resource('non_conformities', NonConformityController::class)->parameters([
+        'non_conformities' => 'nonConformity'
     ]);
 
     Route::resource('notifications', NotificationController::class)->only(['index', 'show', 'destroy']);
-    Route::put('notifications/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
+    Route::post('notifications/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
 
     Route::resource('activity-logs', ActivityLogController::class)->only(['index', 'show'])->parameters([
         'activity-logs' => 'activityLog'
-    ]);
+    ]); 
 
     // Tables pivots
     Route::prefix('role-permissions')->name('role_has_permissions.')->group(function () {
@@ -111,6 +126,12 @@ Route::middleware(['auth', 'role:admin_principal,superviseur_commercial,supervis
         Route::get('/{partnerProduct}', [PartnerProductController::class, 'show'])->name('show');
         Route::delete('/{partnerProduct}', [PartnerProductController::class, 'destroy'])->name('destroy');
     });
+
+
+
+     
+
+    
 });
 
 
@@ -119,23 +140,60 @@ Route::middleware(['auth', 'role:partenaire'])->group(function () {
     Route::get('/partenaire/dashboard', [PartnerDashboardController::class, 'index'])->name('partenaire.dashboard');
     Route::get('partenaire/products', [PartnerDashboardController::class, 'products'])->name('partenaire.products');
     Route::get('partenaire/contracts', [PartnerDashboardController::class, 'contracts'])->name('partenaire.contracts');
+       // Correction : Ajout de la route pour les commandes
+    Route::get('partenaire/orders', [PartnerOrdersController::class, 'index'])->name('partenaire.orders');
+    Route::get('partenaire/orders/details/{order}', [PartnerOrdersController::class, 'show'])->name('partenaire.orders.show');
+
+    Route::get('partenaire/products', [PartnerDashboardController::class, 'products'])->name('partenaire.products');
+Route::get('partenaire/contracts', [PartnerDashboardController::class, 'contracts'])->name('partenaire.contracts');
+
+
+ Route::resource('partenaire/products', PartnerManagedProductController::class)->names([
+        'index' => 'partenaire.products',
+        'store' => 'partenaire.products.store',
+        'update' => 'partenaire.products.update',
+        'destroy' => 'partenaire.products.destroy'
+    ])->parameters(['products' => 'product']);
+
+
+    Route::resource('partenaire/categories', App\Http\Controllers\PartnerCategoryController::class)->names('partenaire.categories');
+
+    Route::put('/products/{product}/stock', [PartnerManagedProductController::class, 'updateStock'])->name('partenaire.products.updateStock');
+
+   
+
 });
 
 
-// --- Clients ---
-Route::middleware(['auth', 'role:client'])->group(function () {
-    Route::get('/client/dashboard', [ClientController::class, 'index'])->name('client.dashboard');
-    Route::get('client/orders', [ClientController::class, 'orders'])->name('client.orders');
-    Route::post('client/orders', [ClientController::class, 'storeOrder'])->name('client.orders.store');
-    Route::get('client/products', [ClientController::class, 'products'])->name('client.products');
+Route::middleware(['auth', 'role:client'])->prefix('client')->name('client.')->group(function () {
+    Route::get('/dashboard', [ClientController::class, 'index'])->name('dashboard');
+
+    // Routes des produits - LES PLUS SPÉCIFIQUES D'ABORD
+    Route::get('/products/{product}/show_json', [ClientController::class, 'showProductJson'])->name('products.show.json');
+    Route::get('/products/{product}', [ClientController::class, 'showProduct'])->name('products.show');
+    Route::get('/products', [ClientController::class, 'products'])->name('products');
+
+    // Routes des commandes
+    Route::get('/orders', [ClientController::class, 'orders'])->name('orders');
+    Route::get('/orders/create', [ClientController::class, 'createOrder'])->name('orders.create');
+    Route::post('/orders', [ClientController::class, 'storeOrder'])->name('orders.store');
+    Route::get('/orders/{order}', [ClientController::class, 'showOrder'])->name('orders.show');
 });
 
 
 // --- Chauffeurs ---
+
+Route::middleware(['auth'])->group(function () {
+    Route::resource('delivery_routes', DeliveryRouteController::class);
+    Route::resource('deliveries', DeliveryController::class);
+});
+
 Route::middleware(['auth', 'role:chauffeur'])->group(function () {
     Route::get('/chauffeur/dashboard', [ChauffeurController::class, 'index'])->name('chauffeur.dashboard');
     Route::get('chauffeur/livraisons', [ChauffeurController::class, 'deliveries'])->name('chauffeur.deliveries');
     Route::get('chauffeur/planning', [ChauffeurController::class, 'planning'])->name('chauffeur.planning');
+    Route::put('chauffeur/deliveries/{delivery}/complete', [ChauffeurController::class, 'completeDelivery'])->name('chauffeur.deliveries.complete');
+
 });
 
 require __DIR__.'/auth.php';

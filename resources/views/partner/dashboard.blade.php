@@ -17,7 +17,8 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="me-3">
                             <div class="text-white-75 small">Total de mes produits</div>
-                            <div class="text-lg fw-bold">75</div> {{-- Remplacez par le compte dynamique --}}
+                            {{-- Affichage de la valeur dynamique --}}
+                            <div class="text-lg fw-bold">{{ $myTotalProducts }}</div>
                         </div>
                         <i class="fas fa-box-open fa-2x"></i>
                     </div>
@@ -37,8 +38,9 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="me-3">
-                            <div class="text-white-75 small">Contrats actifs</div>
-                            <div class="text-lg fw-bold">2</div> {{-- Remplacez par le compte dynamique --}}
+                            <div class="text-white-75 small">Mes Contrats </div>
+                            {{-- Affichage de la valeur dynamique --}}
+                            <div class="text-lg fw-bold">{{ $activeContractsCount }}</div>
                         </div>
                         <i class="fas fa-file-contract fa-2x"></i>
                     </div>
@@ -52,20 +54,21 @@
             </div>
         </div>
 
-        {{-- Commandes récentes --}}
+        {{-- Commandes pour mes produits --}}
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card bg-warning text-white h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="me-3">
-                            <div class="text-white-75 small">Commandes récentes</div>
-                            <div class="text-lg fw-bold">5</div> {{-- Remplacez par le compte dynamique --}}
+                            <div class="text-white-75 small">Total des commandes</div>
+                            {{-- Affichage de la valeur dynamique --}}
+                            <div class="text-lg fw-bold">{{ $recentOrdersCount }}</div>
                         </div>
                         <i class="fas fa-shopping-basket fa-2x"></i>
                     </div>
                 </div>
                 <div class="card-footer d-flex align-items-center justify-content-between small">
-                    <a class="text-white stretched-link text-decoration-none" href="#">
+                    <a class="text-white stretched-link text-decoration-none" href="{{ route('partenaire.orders') }}">
                         Voir les commandes
                     </a>
                     <div class="text-white"><i class="fas fa-angle-right"></i></div>
@@ -80,7 +83,7 @@
             <div class="card mb-4">
                 <div class="card-header">
                     <i class="fas fa-table me-1"></i>
-                    Commandes récentes pour mes produits
+                    Dernières commandes pour mes produits
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -92,35 +95,55 @@
                                     <th>Quantité</th>
                                     <th>Statut</th>
                                     <th>Date de commande</th>
-                                    <th>Détails</th>
+                                    
                                 </tr>
                             </thead>
                             <tbody>
-                                {{-- Données fictives, à remplacer par vos données dynamiques --}}
-                                <tr>
-                                    <td>#ORD-0010</td>
-                                    <td>Produit A</td>
-                                    <td>100 kg</td>
-                                    <td><span class="badge bg-warning text-dark">En cours de validation</span></td>
-                                    <td>2025-08-01</td>
-                                    <td><a href="#" class="btn btn-sm btn-outline-info">Voir</a></td>
-                                </tr>
-                                <tr>
-                                    <td>#ORD-0009</td>
-                                    <td>Produit B</td>
-                                    <td>50 kg</td>
-                                    <td><span class="badge bg-success">Livrée</span></td>
-                                    <td>2025-07-28</td>
-                                    <td><a href="#" class="btn btn-sm btn-outline-info">Voir</a></td>
-                                </tr>
-                                <tr>
-                                    <td>#ORD-0008</td>
-                                    <td>Produit A</td>
-                                    <td>250 kg</td>
-                                    <td><span class="badge bg-primary">En production</span></td>
-                                    <td>2025-07-25</td>
-                                    <td><a href="#" class="btn btn-sm btn-outline-info">Voir</a></td>
-                                </tr>
+                                {{-- Boucle sur les commandes récentes --}}
+                                @forelse ($recentOrders as $order)
+                                    {{-- Pour chaque commande, bouclez sur les articles de commande pertinents --}}
+                                    @foreach ($order->orderItems as $item)
+                                        <tr>
+                                            <td>{{ $order->order_code }}</td>
+                                            <td>{{ $item->product->name }}</td>
+                                            <td>{{ $item->quantity }} {{ $item->sale_unit_at_order }}</td>
+                                            <td>
+                                                @php
+                                                    $badgeClass = '';
+                                                    switch($order->status) {
+                                                        case 'En attente de validation':
+                                                            $badgeClass = 'bg-warning text-dark';
+                                                            break;
+                                                        case 'Validée':
+                                                            $badgeClass = 'bg-info';
+                                                            break;
+                                                        case 'En préparation':
+                                                            $badgeClass = 'bg-primary';
+                                                            break;
+                                                        case 'En livraison':
+                                                            $badgeClass = 'bg-secondary';
+                                                            break;
+                                                        case 'Livrée':
+                                                            $badgeClass = 'bg-success';
+                                                            break;
+                                                        case 'Annulée':
+                                                            $badgeClass = 'bg-danger';
+                                                            break;
+                                                        default:
+                                                            $badgeClass = 'bg-secondary';
+                                                            break;
+                                                    }
+                                                @endphp
+                                                <span class="badge {{ $badgeClass }}">{{ $order->status }}</span>
+                                            </td>
+                                            <td>{{ \Carbon\Carbon::parse($order->created_at)->format('d-m-Y') }}</td>
+                                        </tr>
+                                    @endforeach
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center">Aucune commande récente trouvée.</td>
+                                    </tr>
+                                @endforelse
                             </tbody>
                         </table>
                     </div>

@@ -6,6 +6,19 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
+
+
+     /**
+     * The policy mappings for the application.
+     *
+     * @var array<class-string, class-string>
+     */
+
+    protected $policies = [
+        // 'App\Models\Model' => 'App\Policies\ModelPolicy',
+        'App\Models\Category' => 'App\Policies\CategoryPolicy',
+        'App\Models\Product' => 'App\Policies\ProductPolicy',
+    ];
     /**
      * Register any application services.
      */

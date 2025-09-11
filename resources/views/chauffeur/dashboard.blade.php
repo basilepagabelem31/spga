@@ -17,7 +17,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="me-3">
                             <div class="text-white-75 small">Livraisons prévues aujourd'hui</div>
-                            <div class="text-lg fw-bold">3</div> {{-- Remplacez par le compte dynamique --}}
+                            <div class="text-lg fw-bold">{{ $totalDeliveries }}</div>
                         </div>
                         <i class="fas fa-route fa-2x"></i>
                     </div>
@@ -38,7 +38,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="me-3">
                             <div class="text-white-75 small">Livraisons en cours</div>
-                            <div class="text-lg fw-bold">1</div> {{-- Remplacez par le compte dynamique --}}
+                            <div class="text-lg fw-bold">{{ $pendingDeliveries }}</div>
                         </div>
                         <i class="fas fa-truck-moving fa-2x"></i>
                     </div>
@@ -59,7 +59,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="me-3">
                             <div class="text-white-75 small">Livraisons terminées</div>
-                            <div class="text-lg fw-bold">0</div> {{-- Remplacez par le compte dynamique --}}
+                            <div class="text-lg fw-bold">{{ $completedDeliveries }}</div>
                         </div>
                         <i class="fas fa-check-circle fa-2x"></i>
                     </div>
@@ -80,7 +80,11 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="me-3">
                             <div class="text-white-75 small">Prochaine livraison à</div>
-                            <div class="text-lg fw-bold">11:30</div> {{-- Remplacez par l'heure dynamique --}}
+                            @if($nextDelivery)
+                                <div class="text-lg fw-bold">{{ \Carbon\Carbon::parse($nextDelivery->created_at)->format('H:i') }}</div>
+                            @else
+                                <div class="text-lg fw-bold">N/A</div>
+                            @endif
                         </div>
                         <i class="fas fa-clock fa-2x"></i>
                     </div>
@@ -134,28 +138,39 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {{-- Données fictives, à remplacer par vos données dynamiques --}}
-                                <tr>
-                                    <td>#ORD-001</td>
-                                    <td>Alpha Logistic</td>
-                                    <td>123 Rue de la Victoire</td>
-                                    <td><span class="badge bg-warning text-dark">En route</span></td>
-                                    <td><a href="#" class="btn btn-sm btn-outline-success">Marquer comme livré</a></td>
-                                </tr>
-                                <tr>
-                                    <td>#ORD-002</td>
-                                    <td>Beta Services</td>
-                                    <td>456 Avenue de la Liberté</td>
-                                    <td><span class="badge bg-danger">En attente</span></td>
-                                    <td><a href="#" class="btn btn-sm btn-outline-success">Marquer comme livré</a></td>
-                                </tr>
-                                <tr>
-                                    <td>#ORD-003</td>
-                                    <td>Gamma Inc.</td>
-                                    <td>789 Boulevard de l'Espoir</td>
-                                    <td><span class="badge bg-success">Livré</span></td>
-                                    <td><button class="btn btn-sm btn-outline-secondary" disabled>Livré</button></td>
-                                </tr>
+                                @forelse ($deliveries->whereNotIn('status', ['Terminée', 'Annulée'])->sortBy('created_at') as $delivery)
+                                    <tr>
+                                        <td>#{{ $delivery->id }}</td>
+                                        <td>{{ $delivery->order->client->name ?? 'N/A' }}</td>
+                                        <td>{{ $delivery->address ?? $delivery->order->shipping_address ?? 'N/A' }}</td>
+                                        <td>
+                                            @php
+                                                $badgeClass = '';
+                                                switch($delivery->status) {
+                                                    case 'En cours': $badgeClass = 'bg-info'; break;
+                                                    case 'Planifiée': $badgeClass = 'bg-warning'; break;
+                                                    case 'Terminée': $badgeClass = 'bg-success'; break;
+                                                    case 'Annulée': $badgeClass = 'bg-danger'; break;
+                                                    default: $badgeClass = 'bg-secondary'; break;
+                                                }
+                                            @endphp
+                                            <span class="badge {{ $badgeClass }}">{{ ucfirst($delivery->status) }}</span>
+                                        </td>
+                                        <td>
+                                            <form action="{{ route('chauffeur.deliveries.complete', $delivery->id) }}" method="POST">
+                                                @csrf
+                                                @method('PUT')
+                                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                                    Marquer comme terminé
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="text-center">Toutes les livraisons du jour sont terminées.</td>
+                                    </tr>
+                                @endforelse
                             </tbody>
                         </table>
                     </div>

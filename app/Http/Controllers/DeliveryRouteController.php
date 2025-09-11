@@ -4,29 +4,42 @@ namespace App\Http\Controllers;
 
 use App\Models\DeliveryRoute;
 use App\Models\User; // Pour le chauffeur
+use App\Notifications\DeliveryRouteAssigned;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class DeliveryRouteController extends Controller
 {
     /**
-     * Affiche la liste des tournées de livraison.
+     * Affiche la liste des tournées de livraison avec filtrage.
      */
-    public function index()
-    {
-        $deliveryRoutes = DeliveryRoute::with('driver')->paginate(10);
-        return view('delivery_routes.index', compact('deliveryRoutes'));
-    }
-
-    /**
-     * Affiche le formulaire de création d'une nouvelle tournée de livraison.
-     */
-    public function create()
+    public function index(Request $request)
     {
         $drivers = User::whereHas('role', function ($query) {
             $query->where('name', 'chauffeur');
         })->get();
-        return view('delivery_routes.create', compact('drivers'));
+
+        $deliveryRoutes = DeliveryRoute::with('driver')
+            ->when($request->filled('driver_id'), function ($query) use ($request) {
+                $query->where('driver_id', $request->driver_id);
+            })
+            ->when($request->filled('delivery_date'), function ($query) use ($request) {
+                $query->whereDate('delivery_date', $request->delivery_date);
+            })
+            ->when($request->filled('status'), function ($query) use ($request) {
+                $query->where('status', $request->status);
+            })
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = $request->search;
+                $query->whereHas('driver', function ($subQuery) use ($search) {
+                    $subQuery->where('name', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy('delivery_date', 'desc')
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('delivery_routes.index', compact('deliveryRoutes', 'drivers'));
     }
 
     /**
@@ -38,14 +51,19 @@ class DeliveryRouteController extends Controller
             'delivery_date' => 'required|date',
             'driver_id' => 'required|exists:users,id',
             'vehicle_info' => 'nullable|string|max:255',
-            'status' => ['required', Rule::in(['planifiée', 'en_cours', 'terminée', 'annulée'])],
+            'status' => ['required', Rule::in(['Planifiée', 'En cours', 'Terminée', 'Annulée'])],
             'temporary_deliverers' => 'nullable|array',
         ]);
 
-        DeliveryRoute::create($request->all());
+        $deliveryRoute = DeliveryRoute::create($request->all());
+
+        $driver = User::find($request->driver_id);
+        if ($driver) {
+            $driver->notify(new DeliveryRouteAssigned($deliveryRoute));
+        }
 
         return redirect()->route('delivery_routes.index')
-                         ->with('success', 'Tournée de livraison créée avec succès.');
+                         ->with('success', 'Tournée de livraison créée avec succès et chauffeur notifié.');
     }
 
     /**
@@ -58,30 +76,28 @@ class DeliveryRouteController extends Controller
     }
 
     /**
-     * Affiche le formulaire d'édition d'une tournée de livraison.
-     */
-    public function edit(DeliveryRoute $deliveryRoute)
-    {
-        $drivers = User::whereHas('role', function ($query) {
-            $query->where('name', 'chauffeur');
-        })->get();
-        return view('delivery_routes.edit', compact('deliveryRoute', 'drivers'));
-    }
-
-    /**
      * Met à jour une tournée de livraison existante dans la base de données.
      */
     public function update(Request $request, DeliveryRoute $deliveryRoute)
     {
+        $oldStatus = $deliveryRoute->status;
+
         $request->validate([
             'delivery_date' => 'required|date',
             'driver_id' => 'required|exists:users,id',
             'vehicle_info' => 'nullable|string|max:255',
-            'status' => ['required', Rule::in(['planifiée', 'en_cours', 'terminée', 'annulée'])],
+            'status' => ['required', Rule::in(['Planifiée', 'En cours', 'Terminée', 'Annulée'])],
             'temporary_deliverers' => 'nullable|array',
         ]);
 
         $deliveryRoute->update($request->all());
+
+        if ($oldStatus === 'Planifiée' && $deliveryRoute->status === 'En cours') {
+            $driver = $deliveryRoute->driver;
+            if ($driver) {
+                $driver->notify(new DeliveryRouteAssigned($deliveryRoute));
+            }
+        }
 
         return redirect()->route('delivery_routes.index')
                          ->with('success', 'Tournée de livraison mise à jour avec succès.');

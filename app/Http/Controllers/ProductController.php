@@ -86,6 +86,7 @@ class ProductController extends Controller
             'payment_modalities' => 'nullable|array',
             'estimated_harvest_quantity' => 'nullable|numeric|min:0',
             'estimated_harvest_period' => 'nullable|string|max:255',
+            'alert_threshold' => 'nullable|numeric|min:0', // NOUVEAU : Ajout de la validation
         ]);
 
         // Logique pour gérer provenance_id
@@ -152,6 +153,7 @@ class ProductController extends Controller
             'payment_modalities' => 'nullable|array',
             'estimated_harvest_quantity' => 'nullable|numeric|min:0',
             'estimated_harvest_period' => 'nullable|string|max:255',
+            'alert_threshold' => 'nullable|numeric|min:0', // NOUVEAU : Ajout de la validation
         ]);
 
         // Logique pour gérer provenance_id

@@ -1,4 +1,4 @@
-@extends('layouts.app')
+<!-- @extends('layouts.app')
 
 @section('title', 'Tableau de bord Partenaire')
 
@@ -130,4 +130,4 @@
     </div>
 </div>
 
-@endsection
+@endsection -->

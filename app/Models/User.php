@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use App\Notifications\VerifyEmailNotification;
+use App\Notifications\ResetPasswordNotification;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -67,6 +68,12 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Order::class, 'validated_by');
     }
 
+
+
+    public function sendPasswordResetNotification($token)
+{
+    $this->notify(new ResetPasswordNotification($token));
+}
     /**
      * Les tournées de livraison conduites par cet utilisateur (en tant que chauffeur).
      */

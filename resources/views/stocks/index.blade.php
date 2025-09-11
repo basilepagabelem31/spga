@@ -273,12 +273,12 @@
                     <thead class="table-light">
                         <tr>
                             <th>Produit</th>
-                            <th>Quantité Mouvement</th> {{-- Mis à jour pour clarté --}}
+                            <th>Quantité Mouvement</th>
                             <th>Type Mouvement</th>
                             <th>Référence</th>
                             <th>Seuil Alerte</th>
                             <th>Date Mouvement</th>
-                            <th>Stock Actuel Produit</th> {{-- NOUVEAU --}}
+                            <th>Stock Actuel Produit</th>
                             <th class="text-end pe-4">Actions</th>
                         </tr>
                     </thead>
@@ -305,16 +305,16 @@
                                     <span class="badge {{ $typeClass }}">{{ ucfirst($stock->movement_type) }}</span>
                                 </td>
                                 <td class="{{ $stock->reference_id ? '' : 'text-not-set' }}">{{ $stock->reference_id ?? 'Non renseigné' }}</td>
-                                <td class="{{ $stock->alert_threshold !== null ? '' : 'text-not-set' }}">
-                                    @if ($stock->alert_threshold !== null)
-                                        {{ number_format($stock->alert_threshold, 2, ',', ' ') }}
+                                <td>
+                                    @if ($stock->product && $stock->product->alert_threshold !== null) {{-- NOUVEAU --}}
+                                        {{ number_format($stock->product->alert_threshold, 2, ',', ' ') }}
                                         @if ($stock->product)
                                             {{ $stock->product->sale_unit }}
                                         @endif
                                     @else
-                                        Non renseigné
+                                        <span class="text-not-set">Non renseigné</span>
                                     @endif
-                                    @if ($stock->isLowStock())
+                                    @if ($stock->product && $stock->product->isLowStock()) {{-- NOUVEAU --}}
                                         <span class="badge bg-warning text-dark ms-1" data-bs-toggle="tooltip" title="Stock faible !">⚠️</span>
                                     @endif
                                 </td>
@@ -327,7 +327,7 @@
                                     @else
                                         <span class="text-not-set">N/A</span>
                                     @endif
-                                </td> {{-- NOUVEAU --}}
+                                </td>
                                 <td class="text-end pe-4">
                                     <div class="btn-group" role="group">
                                         <!-- Modifier -->
@@ -349,7 +349,7 @@
 
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center text-muted py-4">Aucun mouvement de stock trouvé.</td> {{-- Colonnes ajustées --}}
+                                <td colspan="8" class="text-center text-muted py-4">Aucun mouvement de stock trouvé.</td>
                             </tr>
                         @endforelse
                     </tbody>

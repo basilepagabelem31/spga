@@ -312,5 +312,25 @@
             return new bootstrap.Tooltip(tooltipTriggerEl)
         })
     });
+
+
+
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialisation des tooltips Bootstrap
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Gestion de l'affichage du modal d'édition en cas d'erreur de validation
+        @if ($errors->any() && old('_token') && session('open_edit_modal_id'))
+            var userId = "{{ session('open_edit_modal_id') }}";
+            var editModal = new bootstrap.Modal(document.getElementById('editUserModal' + userId));
+            editModal.show();
+        @endif
+    });
+
+
 </script>
 @endsection

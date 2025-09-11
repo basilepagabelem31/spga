@@ -14,7 +14,7 @@ class Stock extends Model
         'quantity',
         'movement_type',
         'reference_id',
-        'alert_threshold',
+        // 'alert_threshold', // RETIRÉ : alert_threshold est maintenant sur le modèle Product
         'movement_date',
     ];
 
@@ -32,9 +32,11 @@ class Stock extends Model
 
     /**
      * Vérifie si le stock est en dessous du seuil d'alerte.
+     * Cette méthode est maintenant gérée par le modèle Product.
+     * @deprecated Utilisez $this->product->isLowStock() à la place.
      */
-    public function isLowStock(): bool
-    {
-        return $this->alert_threshold !== null && $this->quantity <= $this->alert_threshold;
-    }
+    // public function isLowStock(): bool
+    // {
+    //     return $this->alert_threshold !== null && $this->quantity <= $this->alert_threshold;
+    // }
 }

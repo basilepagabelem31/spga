@@ -1,0 +1,57 @@
+@extends('layouts.app')
+
+@section('title', 'Mon Planning')
+
+@section('content')
+<div class="container-fluid py-4">
+    <h1 class="h2 fw-bold mb-4">
+        <i class="fas fa-calendar-alt me-2 text-primary"></i> Mon Planning
+    </h1>
+
+    <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted">Date de la tournée</th>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted">Statut</th>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted">Nombre de livraisons</th>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-end">Détails</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($deliveryRoutes as $route)
+                            <tr>
+                                <td class="px-4 py-3">{{ \Carbon\Carbon::parse($route->delivery_date)->format('d/m/Y') }}</td>
+                                <td class="px-4 py-3">
+                                    @php
+                                        $badgeClass = '';
+                                        switch($route->status) {
+                                            case 'Planifiée': $badgeClass = 'bg-warning text-dark'; break;
+                                            case 'En cours': $badgeClass = 'bg-info'; break;
+                                            case 'Terminée': $badgeClass = 'bg-success'; break;
+                                            case 'Annulée': $badgeClass = 'bg-danger'; break;
+                                        }
+                                    @endphp
+                                    <span class="badge {{ $badgeClass }}">{{ ucfirst($route->status) }}</span>
+                                </td>
+                                <td class="px-4 py-3">{{ $route->deliveries->count() }}</td>
+                                <td class="px-4 py-3 text-end">
+                                    <a href="{{ route('chauffeur.deliveries', ['route_id' => $route->id]) }}" class="btn btn-sm btn-primary">
+                                        Voir les livraisons
+                                    </a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="text-center py-5 text-muted">Aucune tournée de livraison n'est planifiée pour le moment.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection

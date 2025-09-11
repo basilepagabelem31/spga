@@ -17,7 +17,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="me-3">
                             <div class="text-white-75 small">Total de vos commandes</div>
-                            <div class="text-lg fw-bold">10</div> {{-- Remplacez par le compte dynamique --}}
+                            <div class="text-lg fw-bold">{{ $totalOrders }}</div>
                         </div>
                         <i class="fas fa-shopping-cart fa-2x"></i>
                     </div>
@@ -38,7 +38,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="me-3">
                             <div class="text-white-75 small">Commandes en attente</div>
-                            <div class="text-lg fw-bold">3</div> {{-- Remplacez par le compte dynamique --}}
+                            <div class="text-lg fw-bold">{{ $pendingOrders }}</div>
                         </div>
                         <i class="fas fa-clock fa-2x"></i>
                     </div>
@@ -80,7 +80,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="me-3">
                             <div class="text-white-75 small">Produits disponibles</div>
-                            <div class="text-lg fw-bold">120</div> {{-- Remplacez par le compte dynamique --}}
+                            <div class="text-lg fw-bold">{{ $availableProducts }}</div>
                         </div>
                         <i class="fas fa-box fa-2x"></i>
                     </div>
@@ -116,28 +116,39 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {{-- Données fictives, à remplacer par vos données dynamiques --}}
-                                <tr>
-                                    <td>#ORD-0010</td>
-                                    <td>2025-08-01</td>
-                                    <td><span class="badge bg-warning text-dark">En cours de validation</span></td>
-                                    <td>500,00 MAD</td>
-                                    <td><a href="#" class="btn btn-sm btn-outline-info">Voir</a></td>
-                                </tr>
-                                <tr>
-                                    <td>#ORD-0009</td>
-                                    <td>2025-07-28</td>
-                                    <td><span class="badge bg-success">Livrée</span></td>
-                                    <td>250,00 MAD</td>
-                                    <td><a href="#" class="btn btn-sm btn-outline-info">Voir</a></td>
-                                </tr>
-                                <tr>
-                                    <td>#ORD-0008</td>
-                                    <td>2025-07-25</td>
-                                    <td><span class="badge bg-success">Livrée</span></td>
-                                    <td>750,00 MAD</td>
-                                    <td><a href="#" class="btn btn-sm btn-outline-info">Voir</a></td>
-                                </tr>
+                                @forelse ($recentOrders as $order)
+                                    <tr>
+                                        <td>#ORD-{{ $order->id }}</td>
+                                        <td>{{ $order->created_at->format('Y-m-d') }}</td>
+                                        <td>
+                                            @php
+                                                $badgeClass = '';
+                                                switch($order->status) {
+                                                    case 'En attente':
+                                                    case 'En cours de validation':
+                                                        $badgeClass = 'bg-warning text-dark';
+                                                        break;
+                                                    case 'Livrée':
+                                                        $badgeClass = 'bg-success';
+                                                        break;
+                                                    case 'Annulée':
+                                                        $badgeClass = 'bg-danger';
+                                                        break;
+                                                    default:
+                                                        $badgeClass = 'bg-secondary';
+                                                        break;
+                                                }
+                                            @endphp
+                                            <span class="badge {{ $badgeClass }}">{{ ucfirst($order->status) }}</span>
+                                        </td>
+                                        <td>{{ number_format($order->total_amount, 2, ',', ' ') }} FCFA</td>
+                                        <td><a href="#" class="btn btn-sm btn-outline-info">Voir</a></td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="text-center">Aucune commande récente à afficher.</td>
+                                    </tr>
+                                @endforelse
                             </tbody>
                         </table>
                     </div>
@@ -146,6 +157,7 @@
                     <a class="text-muted text-decoration-none" href="{{ route('client.orders') }}">
                         Voir tout l'historique des commandes
                     </a>
+                    <div class="text-muted"><i class="fas fa-angle-right"></i></div>
                 </div>
             </div>
         </div>

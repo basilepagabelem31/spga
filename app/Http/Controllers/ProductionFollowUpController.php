@@ -11,11 +11,33 @@ class ProductionFollowUpController extends Controller
     /**
      * Affiche la liste des suivis de production.
      */
-    public function index()
+   public function index(Request $request)
     {
-        $productionFollowUps = ProductionFollowUp::paginate(10);
-        return view('production_follow_ups.index', compact('productionFollowUps'));
+        $query = ProductionFollowUp::query();
+
+        // Recherche par site de production, nom du producteur ou nom de la culture
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('production_site', 'like', '%' . $search . '%')
+                  ->orWhere('producer_name', 'like', '%' . $search . '%')
+                  ->orWhere('culture_name', 'like', '%' . $search . '%');
+            });
+        }
+        
+        // Filtrage par type de production
+        if ($request->filled('production_type')) {
+            $query->where('production_type', $request->production_type);
+        }
+
+        $productionFollowUps = $query->paginate(10)->withQueryString();
+        
+        // Récupérer la liste unique des types de production pour le filtre
+        $productionTypes = ProductionFollowUp::select('production_type')->distinct()->get();
+
+        return view('production_follow_ups.index', compact('productionFollowUps', 'productionTypes'));
     }
+    
 
     /**
      * Affiche le formulaire de création d'un nouveau suivi de production.
@@ -46,7 +68,7 @@ class ProductionFollowUpController extends Controller
             'works_performed' => 'nullable|string',
             'technical_observations' => 'nullable|string',
             'recommended_interventions' => 'nullable|string',
-            'responsible_signature' => 'nullable|string|max:255',
+            'responsible_signature' => 'nullable|string',
         ]);
 
         ProductionFollowUp::create($request->all());
@@ -93,7 +115,7 @@ class ProductionFollowUpController extends Controller
             'works_performed' => 'nullable|string',
             'technical_observations' => 'nullable|string',
             'recommended_interventions' => 'nullable|string',
-            'responsible_signature' => 'nullable|string|max:255',
+            'responsible_signature' => 'nullable|string',
         ]);
 
         $productionFollowUp->update($request->all());

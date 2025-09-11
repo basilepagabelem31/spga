@@ -1,0 +1,83 @@
+<?php
+
+namespace App\Notifications;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
+use App\Models\Delivery;
+
+class DeliveryCompletedNotification extends Notification implements ShouldQueue
+{
+    use Queueable;
+
+    /**
+     * La livraison terminée.
+     *
+     * @var \App\Models\Delivery
+     */
+    public $delivery;
+
+    /**
+     * Crée une nouvelle instance de la notification.
+     *
+     * @param  \App\Models\Delivery  $delivery
+     * @return void
+     */
+    public function __construct(Delivery $delivery)
+    {
+        $this->delivery = $delivery;
+    }
+
+    /**
+     * Obtient les canaux de diffusion de la notification.
+     *
+     * @param  mixed  $notifiable
+     * @return array
+     */
+    public function via($notifiable)
+    {
+        return ['mail'];
+    }
+
+    /**
+     * Construit la représentation par e-mail de la notification.
+     *
+     * @param  mixed  $notifiable
+     * @return \Illuminate\Notifications\Messages\MailMessage
+     */
+    public function toMail($notifiable)
+    {
+        $delivery = $this->delivery;
+        $order = $delivery->order;
+        $deliveryRoute = $delivery->deliveryRoute;
+
+        return (new MailMessage)
+            ->subject('Votre livraison a été effectuée')
+            ->greeting('Bonjour ' . $notifiable->name . ',')
+            ->line('Nous vous confirmons que votre commande a bien été livrée.')
+            ->line('Détails de la livraison :')
+            ->line('- Numéro de commande : ' . $order->id)
+            ->line('- Statut : ' . $delivery->status)
+            ->line('- Date de livraison : ' . ($delivery->delivered_at ? $delivery->delivered_at->format('d/m/Y H:i') : 'Non spécifiée'))
+            ->action('Voir votre commande', route('client.orders.show', $order->id))
+            ->line('Merci pour votre confiance !');
+    }
+
+    /**
+     * Obtient la représentation de la notification sous forme de tableau.
+     *
+     * @param  mixed  $notifiable
+     * @return array
+     */
+    public function toArray($notifiable)
+    {
+        return [
+            'delivery_id' => $this->delivery->id,
+            'order_id' => $this->delivery->order->id,
+            'message' => 'Votre livraison a été effectuée.',
+            'status' => $this->delivery->status,
+        ];
+    }
+}

@@ -28,6 +28,13 @@ class Order extends Model
         'order_date' => 'datetime',
     ];
 
+
+    // Relation avec le validateur (utilisateur)
+    public function validator()
+    {
+        return $this->belongsTo(User::class, 'validated_by_id');
+    }
+
     /**
      * Le client qui a passé la commande.
      */
@@ -43,6 +50,36 @@ class Order extends Model
     {
         return $this->belongsTo(User::class, 'validated_by');
     }
+
+
+
+     public function delivery()
+    {
+        return $this->hasOne(Delivery::class);
+    }
+
+
+
+public function getBadgeClass(): string
+{
+    switch ($this->status) {
+        case 'Validée':
+            return 'bg-success';
+        case 'Annulée':
+            return 'bg-danger';
+        case 'En attente de validation':
+            return 'bg-warning text-dark';
+        case 'En préparation':
+            return 'bg-info';
+        case 'En Livraison':
+            return 'bg-primary';
+        case 'Terminée':
+            return 'bg-dark';
+        default:
+            return 'bg-secondary';
+    }
+}
+
 
     /**
      * Les articles de cette commande.

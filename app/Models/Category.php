@@ -12,6 +12,7 @@ class Category extends Model
     protected $fillable = [
         'name',
         'description',
+        'provenance_id',
     ];
 
     /**
@@ -20,5 +21,11 @@ class Category extends Model
     public function products()
     {
         return $this->hasMany(Product::class);
+    }
+
+
+     public function partner()
+    {
+        return $this->belongsTo(Partner::class, 'provenance_id');
     }
 }

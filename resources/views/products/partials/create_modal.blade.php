@@ -32,12 +32,12 @@
                             <label for="provenance_type_create" class="form-label">Type de provenance <span class="text-danger">*</span></label>
                             <select class="form-select" id="provenance_type_create" name="provenance_type" required>
                                 <option value="">Sélectionner le type</option>
-                                <option value="ferme_propre" {{ old('provenance_type') == 'ferme_propre' ? 'selected' :'' }}>Ferme Propre</option>
+                                <option value="ferme_propre" {{ old('provenance_type') == 'ferme_propre' ? 'selected' : '' }}>Ferme Propre</option>
                                 <option value="producteur_partenaire" {{ old('provenance_type') == 'producteur_partenaire' ? 'selected' : '' }}>Producteur Partenaire</option>
                             </select>
                         </div>
                     </div>
-                    <div class="mb-3" id="provenance_id_group_create" style="display: none;"> {{-- Initialement caché --}}
+                    <div class="mb-3" id="provenance_id_group_create" style="display: none;">
                         <label for="provenance_id_create" class="form-label">Partenaire (si producteur partenaire) <span class="text-danger provenance-required-star">*</span></label>
                         <select class="form-select" id="provenance_id_create" name="provenance_id">
                             <option value="">Sélectionner un partenaire</option>
@@ -66,7 +66,7 @@
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label for="min_order_quantity" class="form-label">Quantité min. commande</label>
-                            <input type="number" step="0.01" class="form-control" id="min_order_quantity" name="min_order_quantity" value="{{ old('min_order_quantity', 0) }}">
+                            <input type="number" step="0.01" class="form-control" id="min_order_quantity" name="min_order_quantity" value="{{ old('min_order_quantity') }}">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="unit_price" class="form-label">Prix unitaire <span class="text-danger">*</span></label>
@@ -78,9 +78,14 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="product_image_create" class="form-label">Image du produit</label>
-                        <input type="file" class="form-control" id="product_image_create" name="product_image">
+                        <label for="product_image" class="form-label">Image du produit</label>
+                        <input type="file" class="form-control" id="product_image" name="product_image">
                         <small class="form-text text-muted">Formats acceptés : JPG, JPEG, PNG, GIF. Taille max : 2MB.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="alert_threshold_create" class="form-label">Seuil d'alerte (Stock) <span class="text-danger">*</span></label> {{-- NOUVEAU --}}
+                        <input type="number" step="0.01" class="form-control" id="alert_threshold_create" name="alert_threshold" value="{{ old('alert_threshold', 0) }}" min="0" required>
+                        <small class="form-text text-muted">Quantité minimale avant alerte de stock bas.</small>
                     </div>
                     <div class="mb-3">
                         <label for="status" class="form-label">Statut <span class="text-danger">*</span></label>
@@ -93,16 +98,16 @@
                         <label class="form-label">Modalités de paiement</label>
                         <div>
                             <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="payment_cash_create" name="payment_modalities[]" value="cash" {{ in_array('cash', old('payment_modalities', [])) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="payment_cash_create">Cash</label>
+                                <input class="form-check-input" type="checkbox" id="payment_cash" name="payment_modalities[]" value="cash" {{ in_array('cash', old('payment_modalities', [])) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="payment_cash">Cash</label>
                             </div>
                             <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="payment_transfer_create" name="payment_modalities[]" value="virement" {{ in_array('virement', old('payment_modalities', [])) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="payment_transfer_create">Virement bancaire</label>
+                                <input class="form-check-input" type="checkbox" id="payment_transfer" name="payment_modalities[]" value="virement" {{ in_array('virement', old('payment_modalities', [])) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="payment_transfer">Virement bancaire</label>
                             </div>
                             <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="payment_check_create" name="payment_modalities[]" value="cheque" {{ in_array('cheque', old('payment_modalities', [])) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="payment_check_create">Chèque</label>
+                                <input class="form-check-input" type="checkbox" id="payment_check" name="payment_modalities[]" value="cheque" {{ in_array('cheque', old('payment_modalities', [])) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="payment_check">Chèque</label>
                             </div>
                         </div>
                     </div>
@@ -126,61 +131,52 @@
     </div>
 </div>
 
-{{-- Inclure Select2 CSS et JS (si non déjà dans le layout principal) --}}
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
+{{-- Script pour initialiser Select2 --}}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        var createModal = document.getElementById('createProductModal');
-        var provenanceTypeSelectCreate = document.getElementById('provenance_type_create');
-        var provenanceIdGroupCreate = document.getElementById('provenance_id_group_create');
-        var provenanceIdSelectCreate = $('#provenance_id_create'); // Utiliser jQuery pour Select2
-        var provenanceRequiredStarCreate = provenanceIdGroupCreate.querySelector('.provenance-required-star');
+        var createProductModal = document.getElementById('createProductModal');
+        var provenanceTypeSelect = document.getElementById('provenance_type_create');
+        var provenanceIdGroup = document.getElementById('provenance_id_group_create');
+        var provenanceIdSelect = $('#provenance_id_create'); // Utiliser jQuery pour Select2
+        var provenanceRequiredStar = provenanceIdGroup.querySelector('.provenance-required-star');
 
-        // Fonction pour gérer l'affichage conditionnel et la validation
-        function toggleProvenanceIdFieldCreate() {
-            if (provenanceTypeSelectCreate.value === 'producteur_partenaire') {
-                provenanceIdGroupCreate.style.display = 'block';
-                provenanceIdSelectCreate.attr('required', true); // Rendre le champ requis
-                if (provenanceRequiredStarCreate) provenanceRequiredStarCreate.style.display = 'inline';
+        function toggleProvenanceIdField() {
+            if (provenanceTypeSelect.value === 'producteur_partenaire') {
+                provenanceIdGroup.style.display = 'block';
+                provenanceIdSelect.attr('required', true);
+                if (provenanceRequiredStar) provenanceRequiredStar.style.display = 'inline';
             } else {
-                provenanceIdGroupCreate.style.display = 'none';
-                provenanceIdSelectCreate.val('').trigger('change'); // Vider et réinitialiser Select2
-                provenanceIdSelectCreate.attr('required', false); // Ne pas rendre le champ requis
-                if (provenanceRequiredStarCreate) provenanceRequiredStarCreate.style.display = 'none';
+                provenanceIdGroup.style.display = 'none';
+                provenanceIdSelect.val('').trigger('change');
+                provenanceIdSelect.attr('required', false);
+                if (provenanceRequiredStar) provenanceRequiredStar.style.display = 'none';
             }
         }
 
-        // Initialiser Select2 lorsque la modale est montrée
-        createModal.addEventListener('shown.bs.modal', function () {
+        createProductModal.addEventListener('shown.bs.modal', function () {
             $('#category_id_create').select2({
                 dropdownParent: $('#createProductModal')
             });
-            provenanceIdSelectCreate.select2({
+            provenanceIdSelect.select2({
                 dropdownParent: $('#createProductModal')
             });
-            toggleProvenanceIdFieldCreate(); // Appeler la fonction au moment de l'affichage
+            toggleProvenanceIdField();
         });
 
-        // Gérer l'affichage conditionnel lors du changement de sélection
-        provenanceTypeSelectCreate.addEventListener('change', toggleProvenanceIdFieldCreate);
+        provenanceTypeSelect.addEventListener('change', toggleProvenanceIdField);
 
-        // Appeler la fonction une fois au chargement initial si la modale est déjà visible (par ex. après une erreur de validation)
-        if ($(createModal).hasClass('show')) {
+        if ($(createProductModal).hasClass('show')) {
             $('#category_id_create').select2({
                 dropdownParent: $('#createProductModal')
             });
-            provenanceIdSelectCreate.select2({
+            provenanceIdSelect.select2({
                 dropdownParent: $('#createProductModal')
             });
-            toggleProvenanceIdFieldCreate();
+            toggleProvenanceIdField();
         } else {
-            // S'assurer que le champ est caché si la modale n'est pas affichée au chargement
-            provenanceIdGroupCreate.style.display = 'none';
-            provenanceIdSelectCreate.attr('required', false);
-            if (provenanceRequiredStarCreate) provenanceRequiredStarCreate.style.display = 'none';
+            provenanceIdGroup.style.display = 'none';
+            provenanceIdSelect.attr('required', false);
+            if (provenanceRequiredStar) provenanceRequiredStar.style.display = 'none';
         }
     });
 </script>

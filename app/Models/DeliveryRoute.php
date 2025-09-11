@@ -43,6 +43,9 @@ class DeliveryRoute extends Model
      */
     public function isCompleted(): bool
     {
-        return $this->status === 'terminée';
+        return $this->status === 'Terminée';
     }
+
+
+   
 }

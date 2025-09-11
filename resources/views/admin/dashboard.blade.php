@@ -17,7 +17,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="me-3">
                             <div class="text-white-75 small">Total Utilisateurs</div>
-                            <div class="text-lg fw-bold">150</div>
+                            <div class="text-lg fw-bold">{{ $totalUsers }}</div>
                         </div>
                         <i class="fas fa-users fa-2x"></i>
                     </div>
@@ -38,7 +38,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="me-3">
                             <div class="text-white-75 small">Total Partenaires</div>
-                            <div class="text-lg fw-bold">45</div>
+                            <div class="text-lg fw-bold">{{ $totalPartners }}</div>
                         </div>
                         <i class="fas fa-handshake fa-2x"></i>
                     </div>
@@ -59,7 +59,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="me-3">
                             <div class="text-white-75 small">Commandes en attente</div>
-                            <div class="text-lg fw-bold">12</div>
+                            <div class="text-lg fw-bold">{{ $pendingOrders }}</div>
                         </div>
                         <i class="fas fa-shopping-cart fa-2x"></i>
                     </div>
@@ -73,14 +73,14 @@
             </div>
         </div>
 
-        {{-- Carte des Stocks --}}
+        {{-- Carte des Produits en rupture de stock --}}
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card bg-danger text-white h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="me-3">
                             <div class="text-white-75 small">Produits en rupture de stock</div>
-                            <div class="text-lg fw-bold">5</div>
+                            <div class="text-lg fw-bold">{{ $outOfStockProducts }}</div>
                         </div>
                         <i class="fas fa-warehouse fa-2x"></i>
                     </div>
@@ -88,6 +88,48 @@
                 <div class="card-footer d-flex align-items-center justify-content-between small">
                     <a class="text-white stretched-link text-decoration-none" href="{{ route('stocks.index') }}">
                         Gérer les stocks
+                    </a>
+                    <div class="text-white"><i class="fas fa-angle-right"></i></div>
+                </div>
+            </div>
+        </div>
+        
+        {{-- Nouvelle carte pour les associations Partenaire-Produit --}}
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="me-3">
+                            <div class="text-white-75 small">Associations Partenaire-Produit</div>
+                            <div class="text-lg fw-bold">{{ $totalPartnerProducts }}</div>
+                        </div>
+                        <i class="fas fa-link fa-2x"></i>
+                    </div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between small">
+                    <a class="text-white stretched-link text-decoration-none" href="{{ route('partner_products.index') }}">
+                        Gérer les associations
+                    </a>
+                    <div class="text-white"><i class="fas fa-angle-right"></i></div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Carte des Produits --}}
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card bg-secondary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="me-3">
+                            <div class="text-white-75 small">Total Produits</div>
+                            <div class="text-lg fw-bold">{{ $totalProducts }}</div>
+                        </div>
+                        <i class="fas fa-box fa-2x"></i>
+                    </div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between small">
+                    <a class="text-white stretched-link text-decoration-none" href="{{ route('products.index') }}">
+                        Voir les produits
                     </a>
                     <div class="text-white"><i class="fas fa-angle-right"></i></div>
                 </div>
@@ -127,16 +169,16 @@
                 </div>
                 <div class="card-body">
                     <div class="list-group list-group-flush">
-                        <a href="{{ route('production-follow-ups.index') }}" class="list-group-item list-group-item-action">
+                        <a href="{{ route('production_follow_ups.index') }}" class="list-group-item list-group-item-action">
                             Suivi de production
                         </a>
-                        <a href="{{ route('quality-controls.index') }}" class="list-group-item list-group-item-action">
+                        <a href="{{ route('quality_controls.index') }}" class="list-group-item list-group-item-action">
                             Contrôles qualité
                         </a>
-                        <a href="{{ route('non-conformities.index') }}" class="list-group-item list-group-item-action">
+                        <a href="{{ route('non_conformities.index') }}" class="list-group-item list-group-item-action">
                             Non-conformités
                         </a>
-                        <a href="{{ route('estimated-harvest-dates.index') }}" class="list-group-item list-group-item-action">
+                        <a href="{{ route('production_follow_ups.index') }}" class="list-group-item list-group-item-action">
                             Dates de récolte estimées
                         </a>
                     </div>
@@ -199,6 +241,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js" crossorigin="anonymous"></script>
 <script>
     // Pour l'exemple, nous incluons des données de graphique de base
+    // Tu peux remplacer les données statiques ci-dessous par des variables Blade
+    // provenant du contrôleur si tu as les données réelles (ex: data: {{ json_encode($yearlyOrderData) }}).
     var ctx = document.getElementById("myAreaChart");
     var myLineChart = new Chart(ctx, {
         type: 'line',
@@ -226,12 +270,13 @@
     var myBarChart = new Chart(ctxB, {
         type: 'bar',
         data: {
-            labels: ["Utilisateurs", "Partenaires", "Produits", "Commandes", "Contrôles Qualité"],
+            // Tu peux aussi mettre à jour ces labels et données avec des variables Blade
+            labels: ["Utilisateurs", "Partenaires", "Produits", "Associations"],
             datasets: [{
                 label: "Nombre",
-                backgroundColor: ["#007bff", "#28a745", "#ffc107", "#dc3545", "#17a2b8"],
-                borderColor: ["#007bff", "#28a745", "#ffc107", "#dc3545", "#17a2b8"],
-                data: [150, 45, 200, 12, 35],
+                backgroundColor: ["#007bff", "#28a745", "#ffc107", "#dc3545"],
+                borderColor: ["#007bff", "#28a745", "#ffc107", "#dc3545"],
+                data: [{{ $totalUsers }}, {{ $totalPartners }}, {{ $totalProducts }}, {{ $totalPartnerProducts }}],
             }],
         },
         options: {

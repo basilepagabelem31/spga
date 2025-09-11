@@ -5,10 +5,20 @@ namespace App\Http\Controllers;
 use App\Models\OrderItem;
 use App\Models\Order;
 use App\Models\Product;
+use App\Services\StockService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class OrderItemController extends Controller
 {
+    protected $stockService;
+
+    public function __construct(StockService $stockService)
+    {
+        $this->stockService = $stockService;
+    }
+
     /**
      * Affiche la liste des articles de commande.
      * Peut être filtré par commande.
@@ -44,28 +54,48 @@ class OrderItemController extends Controller
             'order_id' => 'required|exists:orders,id',
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|numeric|min:0.01',
-            // sale_unit_at_order et unit_price_at_order peuvent être remplis automatiquement
         ]);
 
+        $order = Order::findOrFail($request->order_id);
         $product = Product::findOrFail($request->product_id);
 
-        OrderItem::create([
-            'order_id' => $request->order_id,
-            'product_id' => $request->product_id,
-            'quantity' => $request->quantity,
-            'sale_unit_at_order' => $product->sale_unit,
-            'unit_price_at_order' => $product->unit_price,
-        ]);
+        try {
+            DB::beginTransaction();
+            $orderItem = OrderItem::create([
+                'order_id' => $request->order_id,
+                'product_id' => $request->product_id,
+                'quantity' => $request->quantity,
+                'sale_unit_at_order' => $product->sale_unit,
+                'unit_price_at_order' => $product->unit_price,
+            ]);
 
-        // Mettre à jour le montant total de la commande
-        $order = Order::find($request->order_id);
-        if ($order) {
             $order->update(['total_amount' => $order->getTotalAmount()]);
+
+            // Si la commande est déjà "Terminée", on déduit immédiatement le stock du nouvel article
+            if ($order->status === 'Terminée') {
+                $this->stockService->createStockMovement(
+                    $orderItem->product_id,
+                    $orderItem->quantity,
+                    'sortie',
+                    'MODIF_CMD_AJOUT_' . $order->order_code,
+                    now(),
+                    'Réajustement: ajout d\'un article sur commande terminée'
+                );
+            }
+
+            // Envoyer la notification au fournisseur si le statut le justifie
+            if (in_array($order->status, ['Validée', 'En préparation'])) {
+                $this->stockService->notifySuppliers($order);
+            }
+            
+            DB::commit();
+            return redirect()->route('order_items.index')
+                             ->with('success', 'Article de commande créé avec succès.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la création d\'un article de commande: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Une erreur est survenue lors de la création de l\'article.');
         }
-
-
-        return redirect()->route('order_items.index')
-                         ->with('success', 'Article de commande créé avec succès.');
     }
 
     /**
@@ -98,24 +128,57 @@ class OrderItemController extends Controller
             'quantity' => 'required|numeric|min:0.01',
         ]);
 
+        $oldQuantity = $orderItem->quantity;
+        $order = Order::findOrFail($orderItem->order_id);
         $product = Product::findOrFail($request->product_id);
 
-        $orderItem->update([
-            'order_id' => $request->order_id,
-            'product_id' => $request->product_id,
-            'quantity' => $request->quantity,
-            'sale_unit_at_order' => $product->sale_unit,
-            'unit_price_at_order' => $product->unit_price,
-        ]);
+        try {
+            DB::beginTransaction();
 
-        // Mettre à jour le montant total de la commande
-        $order = Order::find($orderItem->order_id);
-        if ($order) {
+            $orderItem->update([
+                'order_id' => $request->order_id,
+                'product_id' => $request->product_id,
+                'quantity' => $request->quantity,
+                'sale_unit_at_order' => $product->sale_unit,
+                'unit_price_at_order' => $product->unit_price,
+            ]);
+
             $order->update(['total_amount' => $order->getTotalAmount()]);
-        }
 
-        return redirect()->route('order_items.index')
-                         ->with('success', 'Article de commande mis à jour avec succès.');
+            // Si la commande est "Terminée", on ajuste le stock
+            if ($order->status === 'Terminée') {
+                $newQuantity = $request->quantity;
+                if ($newQuantity > $oldQuantity) {
+                    $diff = $newQuantity - $oldQuantity;
+                    $this->stockService->createStockMovement(
+                        $orderItem->product_id,
+                        $diff,
+                        'sortie',
+                        'MODIF_CMD_AUGMENTATION_' . $order->order_code,
+                        now(),
+                        'Réajustement: augmentation de quantité sur commande terminée'
+                    );
+                } elseif ($newQuantity < $oldQuantity) {
+                    $diff = $oldQuantity - $newQuantity;
+                    $this->stockService->createStockMovement(
+                        $orderItem->product_id,
+                        $diff,
+                        'entrée',
+                        'MODIF_CMD_REDUCTION_' . $order->order_code,
+                        now(),
+                        'Réajustement: réduction de quantité sur commande terminée'
+                    );
+                }
+            }
+
+            DB::commit();
+            return redirect()->route('order_items.index')
+                             ->with('success', 'Article de commande mis à jour avec succès.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la mise à jour d\'un article de commande: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Une erreur est survenue lors de la mise à jour de l\'article.');
+        }
     }
 
     /**
@@ -123,16 +186,32 @@ class OrderItemController extends Controller
      */
     public function destroy(OrderItem $orderItem)
     {
-        $orderId = $orderItem->order_id;
-        $orderItem->delete();
+        $order = Order::findOrFail($orderItem->order_id);
 
-        // Mettre à jour le montant total de la commande après suppression d'un article
-        $order = Order::find($orderId);
-        if ($order) {
+        try {
+            DB::beginTransaction();
+            // Remettre le stock si la commande est "Terminée"
+            if ($order->status === 'Terminée') {
+                $this->stockService->createStockMovement(
+                    $orderItem->product_id,
+                    $orderItem->quantity,
+                    'entrée',
+                    'MODIF_CMD_SUPPRESSION_' . $order->order_code,
+                    now(),
+                    'Réajustement: suppression d\'un article de commande terminée'
+                );
+            }
+            
+            $orderItem->delete();
             $order->update(['total_amount' => $order->getTotalAmount()]);
-        }
 
-        return redirect()->route('order_items.index')
-                         ->with('success', 'Article de commande supprimé avec succès.');
+            DB::commit();
+            return redirect()->route('order_items.index')
+                             ->with('success', 'Article de commande supprimé avec succès.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la suppression d\'un article de commande: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Une erreur est survenue lors de la suppression de l\'article.');
+        }
     }
 }

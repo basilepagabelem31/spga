@@ -14,10 +14,21 @@ class QualityControlController extends Controller
      * Affiche la liste des contrôles qualité.
      */
     public function index()
-    {
-        $qualityControls = QualityControl::with(['controller', 'product'])->paginate(10);
-        return view('quality_controls.index', compact('qualityControls'));
-    }
+{
+    // Chargement des contrôles qualité avec les relations pour l'affichage
+    $qualityControls = QualityControl::with(['controller', 'product'])->paginate(10);
+
+    // Récupération des données nécessaires pour les modales
+    // Assurez-vous que le rôle 'superviseur_production' existe
+    $controllers = User::whereHas('role', function ($query) {
+        $query->where('name', 'superviseur_production');
+    })->get();
+    
+    $products = Product::all();
+
+    // On passe toutes les variables à la vue
+    return view('quality_controls.index', compact('qualityControls', 'controllers', 'products'));
+}
 
     /**
      * Affiche le formulaire de création d'un nouveau contrôle qualité.
@@ -48,7 +59,7 @@ class QualityControlController extends Controller
             'control_result' => ['required', Rule::in(['Conforme', 'Non conforme', 'À réévaluer'])],
             'observed_non_conformities' => 'nullable|string',
             'proposed_corrective_actions' => 'nullable|string',
-            'responsible_signature_qc' => 'nullable|string|max:255',
+            'responsible_signature_qc' => 'nullable|string',
         ]);
 
         QualityControl::create($request->all());
@@ -94,7 +105,7 @@ class QualityControlController extends Controller
             'control_result' => ['required', Rule::in(['Conforme', 'Non conforme', 'À réévaluer'])],
             'observed_non_conformities' => 'nullable|string',
             'proposed_corrective_actions' => 'nullable|string',
-            'responsible_signature_qc' => 'nullable|string|max:255',
+            'responsible_signature_qc' => 'nullable|string',
         ]);
 
         $qualityControl->update($request->all());

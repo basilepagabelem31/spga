@@ -37,11 +37,11 @@
                         <input type="text" class="form-control" id="reference_id" name="reference_id" value="{{ old('reference_id') }}">
                         <small class="form-text text-muted">Ex: Numéro de commande, de livraison, de récolte.</small>
                     </div>
-                    <div class="mb-3">
-                        <label for="alert_threshold" class="form-label">Seuil d'alerte (optionnel)</label>
-                        <input type="number" step="0.01" class="form-control" id="alert_threshold" name="alert_threshold" value="{{ old('alert_threshold') }}" min="0">
-                        <small class="form-text text-muted">Quantité minimale avant alerte de stock bas.</small>
-                    </div>
+                    {{-- <div class="mb-3"> --}}
+                        {{-- <label for="alert_threshold" class="form-label">Seuil d'alerte (optionnel)</label> --}}
+                        {{-- <input type="number" step="0.01" class="form-control" id="alert_threshold" name="alert_threshold" value="{{ old('alert_threshold') }}" min="0"> --}}
+                        {{-- <small class="form-text text-muted">Quantité minimale avant alerte de stock bas.</small> --}}
+                    {{-- </div> --}}
                     <div class="mb-3">
                         <label for="movement_date" class="form-label">Date du mouvement (optionnel)</label>
                         <input type="datetime-local" class="form-control" id="movement_date" name="movement_date" value="{{ old('movement_date', now()->format('Y-m-d\TH:i')) }}">

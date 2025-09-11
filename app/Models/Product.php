@@ -4,6 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail; // DÉCOMMENTER CETTE LIGNE
+use App\Mail\LowStockAlertMail; // DÉCOMMENTER CETTE LIGNE
+use App\Models\User; // Assurez-vous que le modèle User est importé
+use App\Models\Partner; // Assurez-vous que le modèle Partner est importé
 
 class Product extends Model
 {
@@ -26,10 +31,11 @@ class Product extends Model
         'estimated_harvest_quantity',
         'estimated_harvest_period',
         'current_stock_quantity',
+        'alert_threshold',
     ];
 
     protected $casts = [
-        'payment_modalities' => 'array', // Pour convertir le JSON en tableau
+        'payment_modalities' => 'array',
     ];
 
     /**
@@ -62,6 +68,12 @@ class Product extends Model
     public function stocks()
     {
         return $this->hasMany(Stock::class);
+    }
+
+
+     public function currentStock()
+    {
+        return $this->stocks()->sum('quantity');
     }
 
     /**
@@ -113,11 +125,21 @@ class Product extends Model
     public function getProvenanceNameAttribute(): ?string
     {
         if ($this->provenance_type === 'producteur_partenaire' && $this->provenance_id) {
-            // Supposons que provenance_id se réfère à un ID de Partner
-            $partner = Partner::find($this->provenance_id);
+            $partner = $this->getSupplierPartner();
             return $partner ? $partner->establishment_name : null;
         }
-        // Ajoutez ici la logique pour 'ferme_propre' si vous avez une table 'farms'
+        return null;
+    }
+
+    /**
+     * Récupère l'instance du partenaire fournisseur si le produit est de type 'producteur_partenaire'.
+     * @return Partner|null
+     */
+    public function getSupplierPartner(): ?Partner
+    {
+        if ($this->provenance_type === 'producteur_partenaire' && $this->provenance_id) {
+            return Partner::find($this->provenance_id);
+        }
         return null;
     }
 
@@ -127,8 +149,62 @@ class Product extends Model
      */
     public function isLowStock(): bool
     {
-        // Le stock est considéré bas si un seuil d'alerte est défini
-        // et que la quantité actuelle est inférieure ou égale à ce seuil.
         return $this->alert_threshold !== null && $this->current_stock_quantity <= $this->alert_threshold;
+    }
+
+    /**
+     * Met à jour le statut de disponibilité du produit en fonction du stock actuel.
+     * Le produit devient 'indisponible' si le stock est <= 0.
+     * Le produit redevient 'disponible' si le stock est > 0 et qu'il était 'indisponible'.
+     */
+    public function updateAvailabilityStatus(): void
+    {
+        if ($this->current_stock_quantity <= 0 && $this->status !== 'indisponible') {
+            $this->update(['status' => 'indisponible']);
+        } elseif ($this->current_stock_quantity > 0 && $this->status === 'indisponible') {
+            $this->update(['status' => 'disponible']);
+        }
+    }
+
+    /**
+     * Envoie une notification de stock faible aux administrateurs et au fournisseur concerné.
+     */
+    public function sendLowStockNotification(): void
+    {
+        // Vérifier si le stock est bas ou nul
+        if (!$this->isLowStock() && $this->current_stock_quantity > 0) {
+            return;
+        }
+
+        // Récupérer les adresses e-mail des administrateurs
+        $adminEmails = User::whereHas('role', function ($query) {
+            $query->whereIn('name', ['admin_principal', 'superviseur_commercial']);
+        })->pluck('email')->filter()->all();
+
+        $supplierEmail = null;
+        $supplierPartner = $this->getSupplierPartner();
+        if ($supplierPartner && $supplierPartner->email) {
+            $supplierEmail = $supplierPartner->email;
+        }
+
+        // Collecter tous les destinataires
+        $recipients = $adminEmails;
+        if ($supplierEmail) {
+            $recipients[] = $supplierEmail;
+        }
+        $recipients = array_unique($recipients);
+
+        if (empty($recipients)) {
+            Log::warning("Aucun destinataire trouvé pour l'alerte de stock du produit : {$this->name}.");
+            return;
+        }
+
+        try {
+            // ENVOI RÉEL DE L'E-MAIL
+            Mail::to($recipients)->send(new LowStockAlertMail($this));
+            Log::info("Alerte de stock envoyée pour le produit '{$this->name}' à: " . implode(', ', $recipients));
+        } catch (\Exception $e) {
+            Log::error("Échec de l'envoi de l'alerte de stock pour '{$this->name}': " . $e->getMessage());
+        }
     }
 }

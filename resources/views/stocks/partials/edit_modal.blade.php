@@ -38,11 +38,7 @@
                         <input type="text" class="form-control" id="reference_id_edit_{{ $stock->id }}" name="reference_id" value="{{ old('reference_id', $stock->reference_id) }}">
                         <small class="form-text text-muted">Ex: Numéro de commande, de livraison, de récolte.</small>
                     </div>
-                    <div class="mb-3">
-                        <label for="alert_threshold_edit_{{ $stock->id }}" class="form-label">Seuil d'alerte (optionnel)</label>
-                        <input type="number" step="0.01" class="form-control" id="alert_threshold_edit_{{ $stock->id }}" name="alert_threshold" value="{{ old('alert_threshold', $stock->alert_threshold) }}" min="0">
-                        <small class="form-text text-muted">Quantité minimale avant alerte de stock bas.</small>
-                    </div>
+                    {{-- Le champ alert_threshold a été déplacé vers la modale de création/édition du produit --}}
                     <div class="mb-3">
                         <label for="movement_date_edit_{{ $stock->id }}" class="form-label">Date du mouvement (optionnel)</label>
                         <input type="datetime-local" class="form-control" id="movement_date_edit_{{ $stock->id }}" name="movement_date" value="{{ old('movement_date', $stock->movement_date ? $stock->movement_date->format('Y-m-d\TH:i') : '') }}">

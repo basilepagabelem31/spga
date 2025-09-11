@@ -3,3 +3,15 @@
 
 /* Vous pouvez ajouter votre propre CSS personnalisé ici
    qui se chargera après Bootstrap */
+
+   #sidebar-wrapper {
+    /* Largeur de base pour les écrans plus larges que 768px */
+    width: 250px;
+}
+
+/* Vous pouvez ajuster la largeur pour des écrans plus petits si nécessaire */
+@media (max-width: 768px) {
+    #sidebar-wrapper {
+        width: 220px;
+    }
+}
