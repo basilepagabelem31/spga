@@ -80,7 +80,7 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" id="modal-footer-content">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
             </div>
         </div>
@@ -94,8 +94,14 @@
     document.addEventListener('DOMContentLoaded', function () {
         const productDetailsModal = document.getElementById('productDetailsModal');
         const modalContentContainer = document.getElementById('modal-content-container');
+        const modalFooterContent = document.getElementById('modal-footer-content');
 
         productDetailsModal.addEventListener('show.bs.modal', function (event) {
+
+            const existingAddButton = modalFooterContent.querySelector('.add-to-cart-btn');
+            if (existingAddButton) {
+                existingAddButton.remove();
+            }
             const button = event.relatedTarget;
             const productId = button.getAttribute('data-product-id');
             
@@ -169,6 +175,14 @@
                     </div>
                 `;
                 modalContentContainer.innerHTML = modalHtml;
+
+            if (stockQuantity > 0) {
+                const addButton = document.createElement('a');
+                addButton.href = `{{ url('/client/orders/create') }}?product_id=${productId}`;
+                addButton.className = 'btn btn-success me-2 add-to-cart-btn';
+                addButton.innerHTML = `<i class="fas fa-shopping-cart me-1"></i> Ajouter au panier`;
+                modalFooterContent.prepend(addButton);
+            }
             })
             .catch(error => {
                 console.error('Erreur:', error);
@@ -177,8 +191,25 @@
                         Impossible de charger les détails du produit: ${error.message}
                     </div>
                 `;
+
+
+
+
+
             });
+
+        productDetailsModal.addEventListener('hidden.bs.modal', function() { // <-- À placer ici, mais toujours dans le DOMContentLoaded
+        const existingAddButton = modalFooterContent.querySelector('.add-to-cart-btn');
+        if (existingAddButton) {
+            existingAddButton.remove();
+        }
+    });
         });
+
+
+
+
+
     });
 </script>
 @endsectionion

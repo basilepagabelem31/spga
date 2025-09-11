@@ -139,6 +139,9 @@ class ClientController extends Controller
     /**
  * Traite et enregistre une nouvelle commande.
  */
+/**
+ * Traite et enregistre une nouvelle commande.
+ */
 public function storeOrder(Request $request)
 {
     $validatedData = $request->validate([
@@ -156,12 +159,23 @@ public function storeOrder(Request $request)
         $totalAmount = 0;
         $orderItemsData = [];
 
-        // Vérification du stock
+        // Vérification du stock et de la quantité minimale
         $productQuantities = collect($validatedData['products'])->keyBy('id');
         $productsInOrder = Product::whereIn('id', $productQuantities->keys())->get();
 
         foreach ($productsInOrder as $product) {
             $requestedQuantity = (float) $productQuantities[$product->id]['quantity'];
+
+            // AJOUT de la vérification de la quantité minimale de commande
+            if ($product->min_order_quantity && $requestedQuantity < $product->min_order_quantity) {
+                DB::rollBack();
+                return redirect()->back()->with(
+                    'error',
+                    "La quantité demandée pour le produit '{$product->name}' est inférieure à la quantité minimale de commande requise ({$product->min_order_quantity} {$product->sale_unit})."
+                )->withInput();
+            }
+
+            // Vérification de stock existante
             if ($product->current_stock_quantity < $requestedQuantity) {
                 DB::rollBack();
                 return redirect()->back()->with(
@@ -173,7 +187,7 @@ public function storeOrder(Request $request)
             }
         }
 
-        // Création de la commande (on crée l'ordre avant d'ajouter les mouvements pour avoir un order_code de référence)
+        // Création de la commande
         $order = Order::create([
             'client_id' => Auth::id(),
             'order_code' => 'ORD-' . Str::random(8),
@@ -185,7 +199,7 @@ public function storeOrder(Request $request)
             'notes' => $validatedData['notes'] ?? null,
         ]);
 
-        // Traitement des articles + création des mouvements via StockService
+        // Traitement des articles
         foreach ($productsInOrder as $product) {
             $requestedQuantity = (float) $productQuantities[$product->id]['quantity'];
             $lineTotal = $product->unit_price * $requestedQuantity;
@@ -200,10 +214,6 @@ public function storeOrder(Request $request)
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
-
-            // Crée le mouvement de stock et met à jour current_stock_quantity via le service
-            // On stocke la quantité en POSITIF dans la table stocks, movement_type = 'sortie'
-            // $this->stockService->createStockMovement($product->id, $requestedQuantity, 'sortie', $order->order_code, now());
         }
 
         // Insertion des order items et mise à jour du total
@@ -222,7 +232,6 @@ public function storeOrder(Request $request)
         )->withInput();
     }
 }
-
     /**
     * Affiche les détails d'un produit spécifique.
     */

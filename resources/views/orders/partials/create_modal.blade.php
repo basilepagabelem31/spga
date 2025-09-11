@@ -1,5 +1,5 @@
 <div class="modal fade" id="createOrderModal" tabindex="-1" aria-labelledby="createOrderModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl"> {{-- Utilisation de modal-xl pour plus d'espace --}}
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="createOrderModalLabel">Créer une nouvelle commande</h5>
@@ -12,7 +12,7 @@
                         <div class="col-md-6 mb-3">
                             <label for="client_id_create" class="form-label">Client <span class="text-danger">*</span></label>
                             <select class="form-select" id="client_id_create" name="client_id" required>
-                                <option value="">Sélectionner un client</option>
+                                <option value="" disabled selected>Sélectionner un client</option>
                                 @foreach ($clients as $client)
                                     <option value="{{ $client->id }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>
                                         {{ $client->full_name ?? $client->email }}
@@ -23,8 +23,9 @@
                         <div class="col-md-6 mb-3">
                             <label for="status_create" class="form-label">Statut <span class="text-danger">*</span></label>
                             <select class="form-select" id="status_create" name="status" required>
+                                <option value="" disabled selected>Sélectionner un statut</option>
                                 @foreach ($statuses as $status)
-                                    <option value="{{ $status }}" {{ old('status', 'En attente de validation') == $status ? 'selected' : '' }}>
+                                    <option value="{{ $status }}" {{ old('status') == $status ? 'selected' : '' }}>
                                         {{ $status }}
                                     </option>
                                 @endforeach
@@ -40,6 +41,8 @@
                         <div class="col-md-6 mb-3">
                             <label for="delivery_mode" class="form-label">Mode de livraison <span class="text-danger">*</span></label>
                             <select class="form-select" id="delivery_mode" name="delivery_mode" required>
+                                {{-- Option par défaut désactivée et sélectionnée --}}
+                                <option value="" disabled selected>Sélectionner un mode de livraison</option>
                                 <option value="standard_72h" {{ old('delivery_mode') == 'standard_72h' ? 'selected' : '' }}>Standard (72h)</option>
                                 <option value="express_6_12h" {{ old('delivery_mode') == 'express_6_12h' ? 'selected' : '' }}>Express (6-12h)</option>
                             </select>
@@ -59,6 +62,8 @@
                         <div class="col-md-6 mb-3">
                             <label for="payment_mode" class="form-label">Mode de paiement <span class="text-danger">*</span></label>
                             <select class="form-select" id="payment_mode" name="payment_mode" required>
+                                {{-- Option par défaut désactivée et sélectionnée --}}
+                                <option value="" disabled selected>Sélectionner un mode de paiement</option>
                                 <option value="paiement_mobile" {{ old('payment_mode') == 'paiement_mobile' ? 'selected' : '' }}>Paiement Mobile</option>
                                 <option value="paiement_a_la_livraison" {{ old('payment_mode') == 'paiement_a_la_livraison' ? 'selected' : '' }}>Paiement à la livraison</option>
                                 <option value="virement_bancaire" {{ old('payment_mode') == 'virement_bancaire' ? 'selected' : '' }}>Virement bancaire</option>
@@ -67,7 +72,7 @@
                         <div class="col-md-6 mb-3">
                             <label for="validated_by_create" class="form-label">Validé par</label>
                             <select class="form-select" id="validated_by_create" name="validated_by">
-                                <option value="">Non validé</option>
+                                <option value="" {{ old('validated_by') == '' ? 'selected' : '' }}>Non validé</option>
                                 @foreach ($validators as $validator)
                                     <option value="{{ $validator->id }}" {{ old('validated_by') == $validator->id ? 'selected' : '' }}>
                                         {{ $validator->full_name ?? $validator->email }}
@@ -85,13 +90,12 @@
                     <hr class="my-4">
                     <h4>Articles de la commande</h4>
                     <div id="order-items-container-create">
-                        {{-- Les articles de commande seront ajoutés ici par JS --}}
                         @if (old('products'))
                             @foreach (old('products') as $index => $oldProduct)
                                 <div class="row g-2 mb-2 order-item-row">
                                     <div class="col-md-6">
                                         <select class="form-select product-select" name="products[{{ $index }}][id]" required>
-                                            <option value="">Sélectionner un produit</option>
+                                            <option value="" disabled selected>Sélectionner un produit</option>
                                             @foreach ($products as $product)
                                                 <option value="{{ $product->id }}" data-unit-price="{{ $product->unit_price }}" data-sale-unit="{{ $product->sale_unit }}" {{ $oldProduct['id'] == $product->id ? 'selected' : '' }}>
                                                     {{ $product->name }} ({{ number_format($product->unit_price, 2) }} FCFA/{{ $product->sale_unit }})
@@ -156,7 +160,8 @@
             newRow.innerHTML = `
                 <div class="col-md-6">
                     <select class="form-select product-select" name="products[${productIndexCreate}][id]" required>
-                        <option value="">Sélectionner un produit</option>
+                        {{-- Ajout de disabled selected pour garantir le bon affichage --}}
+                        <option value="" disabled selected>Sélectionner un produit</option>
                         @foreach ($products as $product)
                             <option value="{{ $product->id }}" data-unit-price="{{ $product->unit_price }}" data-sale-unit="{{ $product->sale_unit }}">{{ $product->name }} ({{ number_format($product->unit_price, 2) }} FCFA/{{ $product->sale_unit }})</option>
                         @endforeach
@@ -212,6 +217,12 @@
             $('#validated_by_create').select2({
                 dropdownParent: $('#createOrderModal')
             });
+            $('#delivery_mode').select2({
+                dropdownParent: $('#createOrderModal')
+            });
+            $('#payment_mode').select2({
+                dropdownParent: $('#createOrderModal')
+            });
 
             // Initialiser Select2 et attacher les écouteurs pour les articles déjà présents (e.g., après validation échouée)
             orderItemsContainerCreate.querySelectorAll('.order-item-row').forEach(function(row) {
@@ -237,6 +248,12 @@
                 dropdownParent: $('#createOrderModal')
             });
             $('#validated_by_create').select2({
+                dropdownParent: $('#createOrderModal')
+            });
+            $('#delivery_mode').select2({
+                dropdownParent: $('#createOrderModal')
+            });
+            $('#payment_mode').select2({
                 dropdownParent: $('#createOrderModal')
             });
             orderItemsContainerCreate.querySelectorAll('.order-item-row').forEach(function(row) {

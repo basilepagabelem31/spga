@@ -69,81 +69,88 @@ class OrderController extends Controller
     /**
      * Stocke une nouvelle commande dans la base de données.
      */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'client_id' => 'required|exists:users,id',
-            'desired_delivery_date' => 'nullable|string|max:255',
-            'delivery_location' => 'nullable|string',
-            'geolocation' => 'nullable|string|max:255',
-            'delivery_mode' => ['required', Rule::in(['standard_72h', 'express_6_12h'])],
-            'payment_mode' => ['required', Rule::in(['paiement_mobile', 'paiement_a_la_livraison', 'virement_bancaire'])],
-            'status' => ['required', Rule::in(['En attente de validation', 'Validée', 'En préparation', 'En livraison', 'Terminée', 'Annulée'])],
-            'notes' => 'nullable|string',
-            'validated_by' => 'nullable|exists:users,id',
-            'products' => 'required|array|min:1',
-            'products.*.id' => 'required|exists:products,id',
-            'products.*.quantity' => 'required|numeric|min:0.01',
-        ]);
+    /**
+ * Stocke une nouvelle commande dans la base de données.
+ */
+public function store(Request $request)
+{
+    $request->validate([
+        'client_id' => 'required|exists:users,id',
+        'desired_delivery_date' => 'nullable|string|max:255',
+        'delivery_location' => 'nullable|string',
+        'geolocation' => 'nullable|string|max:255',
+        'delivery_mode' => ['required', Rule::in(['standard_72h', 'express_6_12h'])],
+        'payment_mode' => ['required', Rule::in(['paiement_mobile', 'paiement_a_la_livraison', 'virement_bancaire'])],
+        'status' => ['required', Rule::in(['En attente de validation', 'Validée', 'En préparation', 'En livraison', 'Terminée', 'Annulée'])],
+        'notes' => 'nullable|string',
+        'validated_by' => 'nullable|exists:users,id',
+        'products' => 'required|array|min:1',
+        'products.*.id' => 'required|exists:products,id',
+        'products.*.quantity' => 'required|numeric|min:0.01',
+    ]);
 
-        $errors = [];
-        foreach ($request->products as $item) {
-            $product = Product::find($item['id']);
-            if ($product && $product->current_stock_quantity < $item['quantity']) {
+    $errors = [];
+    foreach ($request->products as $item) {
+        $product = Product::find($item['id']);
+        if ($product) {
+            // AJOUT de la vérification de la quantité minimale de commande
+            if ($product->min_order_quantity && $item['quantity'] < $product->min_order_quantity) {
+                $errors[] = "La quantité demandée pour le produit '{$product->name}' ({$item['quantity']} {$product->sale_unit}) est inférieure à la quantité minimale de commande requise ({$product->min_order_quantity} {$product->sale_unit}).";
+            }
+
+            // Vérification de stock existante
+            if ($product->current_stock_quantity < $item['quantity']) {
                 $errors[] = "La quantité demandée pour le produit '{$product->name}' ({$item['quantity']} {$product->sale_unit}) est supérieure au stock disponible ({$product->current_stock_quantity} {$product->sale_unit}).";
             }
         }
-
-        if (!empty($errors)) {
-            return redirect()->back()->withInput()->withErrors($errors);
-        }
-
-        try {
-            DB::beginTransaction();
-            $order_code = 'CMD-' . strtoupper(Str::random(8));
-
-            $order = Order::create([
-                'client_id' => $request->client_id,
-                'order_code' => $order_code,
-                'order_date' => now(),
-                'desired_delivery_date' => $request->desired_delivery_date,
-                'delivery_location' => $request->delivery_location,
-                'geolocation' => $request->geolocation,
-                'delivery_mode' => $request->delivery_mode,
-                'payment_mode' => $request->payment_mode,
-                'status' => $request->status,
-                'notes' => $request->notes,
-                'validated_by' => $request->validated_by,
-                'total_amount' => 0,
-            ]);
-
-            $totalAmount = 0;
-            foreach ($request->products as $item) {
-                $product = Product::find($item['id']);
-                if ($product) {
-                    $order->addItem($product, $item['quantity']);
-                    $totalAmount += $product->unit_price * $item['quantity'];
-                }
-            }
-            $order->update(['total_amount' => $totalAmount]);
-            
-            // SUPPRIMER la déduction de stock ici - elle ne se fera que lorsque le statut sera "Terminée"
-            // La vérification de stock reste pour s'assurer qu'il y a assez de stock au moment de la commande
-
-            if (in_array($order->status, ['Validée', 'En préparation'])) {
-                $this->stockService->notifySuppliers($order);
-            }
-
-            DB::commit();
-            return redirect()->route('orders.index')->with('success', 'Commande créée avec succès.');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors de la création de la commande: ' . $e->getMessage());
-            return redirect()->back()->withInput()->with('error', 'Une erreur est survenue lors de la création de la commande.');
-        }
     }
 
+    if (!empty($errors)) {
+        return redirect()->back()->withInput()->withErrors($errors);
+    }
+
+    try {
+        DB::beginTransaction();
+        $order_code = 'CMD-' . strtoupper(Str::random(8));
+
+        $order = Order::create([
+            'client_id' => $request->client_id,
+            'order_code' => $order_code,
+            'order_date' => now(),
+            'desired_delivery_date' => $request->desired_delivery_date,
+            'delivery_location' => $request->delivery_location,
+            'geolocation' => $request->geolocation,
+            'delivery_mode' => $request->delivery_mode,
+            'payment_mode' => $request->payment_mode,
+            'status' => $request->status,
+            'notes' => $request->notes,
+            'validated_by' => $request->validated_by,
+            'total_amount' => 0,
+        ]);
+
+        $totalAmount = 0;
+        foreach ($request->products as $item) {
+            $product = Product::find($item['id']);
+            if ($product) {
+                $order->addItem($product, $item['quantity']);
+                $totalAmount += $product->unit_price * $item['quantity'];
+            }
+        }
+        $order->update(['total_amount' => $totalAmount]);
+        
+        if (in_array($order->status, ['Validée', 'En préparation'])) {
+            $this->stockService->notifySuppliers($order);
+        }
+
+        DB::commit();
+        return redirect()->route('orders.index')->with('success', 'Commande créée avec succès.');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Erreur lors de la création de la commande: ' . $e->getMessage());
+        return redirect()->back()->withInput()->with('error', 'Une erreur est survenue lors de la création de la commande.');
+    }
+}
     /**
      * Met à jour une commande existante dans la base de données.
      */
