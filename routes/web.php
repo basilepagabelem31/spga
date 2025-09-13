@@ -6,10 +6,14 @@ use App\Http\Controllers\ProfileController;
 // Contrôleurs principaux
 use App\Http\Controllers\PartnerManagedProductController; // <-- Nouveau contrôleur
 use App\Http\Controllers\RoleController;
+use Illuminate\Support\Facades\Log;
+
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleHasPermissionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\CategoryController;
+use App\Models\Order;
+
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\PartnerProductController;
@@ -194,6 +198,87 @@ Route::middleware(['auth', 'role:chauffeur'])->group(function () {
     Route::get('chauffeur/planning', [ChauffeurController::class, 'planning'])->name('chauffeur.planning');
     Route::put('chauffeur/deliveries/{delivery}/complete', [ChauffeurController::class, 'completeDelivery'])->name('chauffeur.deliveries.complete');
 
+});
+
+
+
+
+// Dans routes/web.php
+Route::get('/test-stock-deduction/{orderId}', function($orderId) {
+    $order = Order::with('orderItems.product')->findOrFail($orderId);
+    $stockService = new App\Services\StockService();
+    
+    Log::info("=== TEST DÉDUCTION STOCK ===");
+    Log::info("Commande: {$order->order_code}");
+    Log::info("Statut: {$order->status}");
+    Log::info("Nombre d'items: " . $order->orderItems->count());
+    
+    foreach ($order->orderItems as $item) {
+        Log::info("Item: {$item->product->name} - {$item->quantity}");
+        Log::info("Stock avant: {$item->product->current_stock_quantity}");
+    }
+    
+    try {
+        $stockService->deductStockForOrder($order);
+        
+        // Recharger les produits pour voir les nouvelles valeurs
+        $order->load('orderItems.product');
+        
+        $results = [];
+        foreach ($order->orderItems as $item) {
+            $results[] = [
+                'product' => $item->product->name,
+                'quantity_deducted' => $item->quantity,
+                'stock_after' => $item->product->current_stock_quantity
+            ];
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Déduction effectuée',
+            'results' => $results
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error("Erreur test: " . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+
+
+
+
+// Dans routes/web.php
+Route::get('/fix-stock/{productId}', function($productId) {
+    $product = App\Models\Product::findOrFail($productId);
+    
+    // Calculer le stock réel basé sur les mouvements
+    $entrees = App\Models\Stock::where('product_id', $productId)
+        ->where('movement_type', 'entrée')
+        ->sum('quantity');
+    
+    $sorties = App\Models\Stock::where('product_id', $productId)
+        ->where('movement_type', 'sortie')
+        ->sum('quantity');
+    
+    $stock_reel = $entrees - $sorties;
+    
+    // Corriger le stock
+    $product->current_stock_quantity = $stock_reel;
+    $product->updateAvailabilityStatus();
+    $product->save();
+    
+    return response()->json([
+        'success' => true,
+        'product' => $product->name,
+        'ancien_stock' => $product->current_stock_quantity,
+        'nouveau_stock' => $stock_reel,
+        'entrees' => $entrees,
+        'sorties' => $sorties
+    ]);
 });
 
 require __DIR__.'/auth.php';

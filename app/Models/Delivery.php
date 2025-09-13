@@ -5,6 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Notifications\DeliveryCompletedNotification;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use App\Services\StockService ;
+
 
 class Delivery extends Model
 {
@@ -87,31 +91,58 @@ class Delivery extends Model
     /**
      * Boot method pour gérer la synchronisation automatique avec la commande.
      */
-    protected static function booted()
-    {
-        static::updated(function ($delivery) {
-            if ($delivery->isDirty('status') && $delivery->order) {
-                switch ($delivery->status) {
-                    case 'Terminée':
-                        $delivery->order->status = 'Terminée';
-                        break;
-                    case 'Annulée':
-                        $delivery->order->status = 'Annulée';
-                        break;
-                    case 'En cours':
-                        $delivery->order->status = 'En Livraison';
-                        break;
-                }
-                $delivery->order->save();
+     protected static function booted()
+{
+    static::updated(function ($delivery) {
+        if ($delivery->isDirty('status') && $delivery->order) {
 
-                // Notification si statut changé en Terminée
-                if ($delivery->status === 'Terminée') {
-                    $client = $delivery->order->user;
-                    if ($client) {
-                        $client->notify(new DeliveryCompletedNotification($delivery));
+            $oldStatus = $delivery->getOriginal('status');
+            $newStatus = $delivery->status;
+
+            // CAS 1 : Livraison terminée => déduction du stock
+            if ($newStatus === 'Terminée' && $oldStatus !== 'Terminée') {
+                DB::beginTransaction();
+                try {
+                    $order = $delivery->order;
+                    $order->status = 'Terminée';
+                    $order->save();
+
+                    $order->load('orderItems.product');
+                    app(\App\Services\StockService::class)->deductStockForOrder($order);
+
+                    DB::commit();
+
+                    // Notif client
+                    if ($order->user) {
+                        $order->user->notify(new \App\Notifications\DeliveryCompletedNotification($delivery));
                     }
+
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error("Erreur déduction stock (livraison {$delivery->id}) : " . $e->getMessage());
                 }
             }
-        });
-    }
+
+            // CAS 2 : Livraison annulée => remise en stock
+            if ($newStatus === 'Annulée' && $oldStatus === 'Terminée') {
+                DB::beginTransaction();
+                try {
+                    $order = $delivery->order;
+                    $order->status = 'Annulée';
+                    $order->save();
+
+                    $order->load('orderItems.product');
+                    app(\App\Services\StockService::class)->replenishStockForOrder($order);
+
+                    DB::commit();
+
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error("Erreur remise stock (livraison {$delivery->id}) : " . $e->getMessage());
+                }
+            }
+        }
+    });
+}
+
 }

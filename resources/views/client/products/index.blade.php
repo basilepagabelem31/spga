@@ -87,9 +87,7 @@
     </div>
 </div>
 
-@endsection
 
-@section('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const productDetailsModal = document.getElementById('productDetailsModal');
@@ -212,4 +210,4 @@
 
     });
 </script>
-@endsectionion
+@endsection

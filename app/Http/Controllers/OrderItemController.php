@@ -72,16 +72,16 @@ class OrderItemController extends Controller
             $order->update(['total_amount' => $order->getTotalAmount()]);
 
             // Si la commande est déjà "Terminée", on déduit immédiatement le stock du nouvel article
-            if ($order->status === 'Terminée') {
-                $this->stockService->createStockMovement(
-                    $orderItem->product_id,
-                    $orderItem->quantity,
-                    'sortie',
-                    'MODIF_CMD_AJOUT_' . $order->order_code,
-                    now(),
-                    'Réajustement: ajout d\'un article sur commande terminée'
-                );
-            }
+            // if ($order->status === 'Terminée') {
+            //     $this->stockService->createStockMovement(
+            //         $orderItem->product_id,
+            //         $orderItem->quantity,
+            //         'sortie',
+            //         'MODIF_CMD_AJOUT_' . $order->order_code,
+            //         now(),
+            //         'Réajustement: ajout d\'un article sur commande terminée'
+            //     );
+            // }
 
             // Envoyer la notification au fournisseur si le statut le justifie
             if (in_array($order->status, ['Validée', 'En préparation'])) {
@@ -146,30 +146,30 @@ class OrderItemController extends Controller
             $order->update(['total_amount' => $order->getTotalAmount()]);
 
             // Si la commande est "Terminée", on ajuste le stock
-            if ($order->status === 'Terminée') {
-                $newQuantity = $request->quantity;
-                if ($newQuantity > $oldQuantity) {
-                    $diff = $newQuantity - $oldQuantity;
-                    $this->stockService->createStockMovement(
-                        $orderItem->product_id,
-                        $diff,
-                        'sortie',
-                        'MODIF_CMD_AUGMENTATION_' . $order->order_code,
-                        now(),
-                        'Réajustement: augmentation de quantité sur commande terminée'
-                    );
-                } elseif ($newQuantity < $oldQuantity) {
-                    $diff = $oldQuantity - $newQuantity;
-                    $this->stockService->createStockMovement(
-                        $orderItem->product_id,
-                        $diff,
-                        'entrée',
-                        'MODIF_CMD_REDUCTION_' . $order->order_code,
-                        now(),
-                        'Réajustement: réduction de quantité sur commande terminée'
-                    );
-                }
-            }
+            // if ($order->status === 'Terminée') {
+            //     $newQuantity = $request->quantity;
+            //     if ($newQuantity > $oldQuantity) {
+            //         $diff = $newQuantity - $oldQuantity;
+            //         $this->stockService->createStockMovement(
+            //             $orderItem->product_id,
+            //             $diff,
+            //             'sortie',
+            //             'MODIF_CMD_AUGMENTATION_' . $order->order_code,
+            //             now(),
+            //             'Réajustement: augmentation de quantité sur commande terminée'
+            //         );
+            //     } elseif ($newQuantity < $oldQuantity) {
+            //         $diff = $oldQuantity - $newQuantity;
+            //         $this->stockService->createStockMovement(
+            //             $orderItem->product_id,
+            //             $diff,
+            //             'entrée',
+            //             'MODIF_CMD_REDUCTION_' . $order->order_code,
+            //             now(),
+            //             'Réajustement: réduction de quantité sur commande terminée'
+            //         );
+            //     }
+            // }
 
             DB::commit();
             return redirect()->route('order_items.index')
@@ -191,16 +191,16 @@ class OrderItemController extends Controller
         try {
             DB::beginTransaction();
             // Remettre le stock si la commande est "Terminée"
-            if ($order->status === 'Terminée') {
-                $this->stockService->createStockMovement(
-                    $orderItem->product_id,
-                    $orderItem->quantity,
-                    'entrée',
-                    'MODIF_CMD_SUPPRESSION_' . $order->order_code,
-                    now(),
-                    'Réajustement: suppression d\'un article de commande terminée'
-                );
-            }
+            // if ($order->status === 'Terminée') {
+            //     $this->stockService->createStockMovement(
+            //         $orderItem->product_id,
+            //         $orderItem->quantity,
+            //         'entrée',
+            //         'MODIF_CMD_SUPPRESSION_' . $order->order_code,
+            //         now(),
+            //         'Réajustement: suppression d\'un article de commande terminée'
+            //     );
+            // }
             
             $orderItem->delete();
             $order->update(['total_amount' => $order->getTotalAmount()]);

@@ -100,6 +100,8 @@ class Product extends Model
         return $this->status === 'disponible';
     }
 
+    
+
     /**
      * Scope pour récupérer uniquement les produits disponibles.
      */
@@ -157,14 +159,16 @@ class Product extends Model
      * Le produit devient 'indisponible' si le stock est <= 0.
      * Le produit redevient 'disponible' si le stock est > 0 et qu'il était 'indisponible'.
      */
-    public function updateAvailabilityStatus(): void
-    {
-        if ($this->current_stock_quantity <= 0 && $this->status !== 'indisponible') {
-            $this->update(['status' => 'indisponible']);
-        } elseif ($this->current_stock_quantity > 0 && $this->status === 'indisponible') {
-            $this->update(['status' => 'disponible']);
-        }
+  // Dans app/Models/Product.php
+public function updateAvailabilityStatus(): void
+{
+    $newStatus = ($this->current_stock_quantity > 0) ? 'disponible' : 'indisponible';
+    
+    if ($this->status !== $newStatus) {
+        $this->status = $newStatus;
+        $this->save();
     }
+}
 
     /**
      * Envoie une notification de stock faible aux administrateurs et au fournisseur concerné.

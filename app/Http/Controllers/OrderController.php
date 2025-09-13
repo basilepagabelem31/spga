@@ -109,6 +109,10 @@ public function store(Request $request)
         return redirect()->back()->withInput()->withErrors($errors);
     }
 
+
+
+
+
     try {
         DB::beginTransaction();
         $order_code = 'CMD-' . strtoupper(Str::random(8));
@@ -128,6 +132,8 @@ public function store(Request $request)
             'total_amount' => 0,
         ]);
 
+        
+
         $totalAmount = 0;
         foreach ($request->products as $item) {
             $product = Product::find($item['id']);
@@ -142,6 +148,11 @@ public function store(Request $request)
             $this->stockService->notifySuppliers($order);
         }
 
+        if ($order->status === 'Terminée') {
+            $order->load('orderItems.product');
+            $this->stockService->deductStockForOrder($order);
+        }
+
         DB::commit();
         return redirect()->route('orders.index')->with('success', 'Commande créée avec succès.');
 
@@ -154,74 +165,88 @@ public function store(Request $request)
     /**
      * Met à jour une commande existante dans la base de données.
      */
-    public function update(Request $request, Order $order)
-    {
-        $oldStatus = $order->status;
-        $oldOrderItems = $order->orderItems->keyBy('product_id');
+   public function update(Request $request, Order $order)
+{
+    $oldStatus = $order->status;
+    $newStatus = $request->status;
 
-        $request->validate([
-            'client_id' => 'required|exists:users,id',
-            'desired_delivery_date' => 'nullable|string|max:255',
-            'delivery_location' => 'nullable|string',
-            'geolocation' => 'nullable|string|max:255',
-            'delivery_mode' => ['required', Rule::in(['standard_72h', 'express_6_12h'])],
-            'payment_mode' => ['required', Rule::in(['paiement_mobile', 'paiement_a_la_livraison', 'virement_bancaire'])],
-            'status' => ['required', Rule::in(['En attente de validation', 'Validée', 'En préparation', 'En livraison', 'Terminée', 'Annulée'])],
-            'notes' => 'nullable|string',
-            'validated_by' => 'nullable|exists:users,id',
-            'products' => 'required|array|min:1',
-            'products.*.id' => 'required|exists:products,id',
-            'products.*.quantity' => 'required|numeric|min:0.01',
-        ]);
-        
-        $newStatus = $request->status;
-        $newOrderItems = collect($request->products)->keyBy('id');
+    Log::info("Mise à jour commande {$order->id}: {$oldStatus} -> {$newStatus}");
 
-        try {
-            DB::beginTransaction();
 
-            // Gérer la déduction/remise en stock en fonction du changement de statut
-            if ($oldStatus !== $newStatus) {
-                if ($newStatus === 'Terminée') {
-                    // Déduction SEULEMENT si le statut passe à "Terminée"
-                    $this->stockService->deductStockForOrder($order);
-                } elseif ($oldStatus === 'Terminée') {
-                    // Remise en stock si on quitte l'état "Terminée"
-                    $this->stockService->replenishStockForOrder($order);
-                }
+        // 3. Gérer la déduction/remise du stock APRÈS mise à jour des items
+
+
+    $request->validate([
+        'client_id' => 'required|exists:users,id',
+        'desired_delivery_date' => 'nullable|string|max:255',
+        'delivery_location' => 'nullable|string',
+        'geolocation' => 'nullable|string|max:255',
+        'delivery_mode' => ['required', Rule::in(['standard_72h', 'express_6_12h'])],
+        'payment_mode' => ['required', Rule::in(['paiement_mobile', 'paiement_a_la_livraison', 'virement_bancaire'])],
+        'status' => ['required', Rule::in(['En attente de validation', 'Validée', 'En préparation', 'En livraison', 'Terminée', 'Annulée'])],
+        'notes' => 'nullable|string',
+        'validated_by' => 'nullable|exists:users,id',
+        'products' => 'required|array|min:1',
+        'products.*.id' => 'required|exists:products,id',
+        'products.*.quantity' => 'required|numeric|min:0.01',
+    ]);
+    
+
+    try {
+        DB::beginTransaction();
+
+        // 1. Supprimer et recréer les OrderItems
+        $order->orderItems()->delete();
+        $totalAmount = 0;
+        foreach ($request->products as $item) {
+            $product = Product::find($item['id']);
+            if ($product) {
+                $order->addItem($product, $item['quantity']);
+                $totalAmount += $product->unit_price * $item['quantity'];
             }
-
-            // SUPPRIMER la gestion de l'ajustement du stock pour les modifications d'articles
-            // Le stock n'est ajusté que lors des changements de statut vers/depuis "Terminée"
-            // if ($oldStatus === 'Terminée' && $newStatus === 'Terminée' && $oldOrderItems->count() > 0) {
-            //     $this->stockService->adjustStockForOrderItemsChange($order, $oldOrderItems, $newOrderItems);
-            // }
-
-            // Mettre à jour les OrderItems après la gestion du stock
-            $order->orderItems()->delete();
-            $totalAmount = 0;
-            foreach ($request->products as $item) {
-                $product = Product::find($item['id']);
-                if ($product) {
-                    $order->addItem($product, $item['quantity']);
-                    $totalAmount += $product->unit_price * $item['quantity'];
-                }
-            }
-            $order->update(['total_amount' => $totalAmount, 'status' => $newStatus, 'notes' => $request->notes, 'validated_by' => $request->validated_by]);
-            
-            // Envoyer la notification au fournisseur si le statut passe à 'Validée' ou 'En préparation'
-            if (in_array($newStatus, ['Validée', 'En préparation']) && !in_array($oldStatus, ['Validée', 'En préparation'])) {
-                $this->stockService->notifySuppliers($order);
-            }
-
-            DB::commit();
-            return redirect()->route('orders.index')->with('success', 'Commande mise à jour avec succès.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors de la mise à jour de la commande: ' . $e->getMessage());
-            return redirect()->back()->withInput()->with('error', 'Une erreur est survenue lors de la mise à jour de la commande.');
         }
+
+        // 2. Mettre à jour la commande (hors gestion du stock)
+        $order->update([
+            'total_amount' => $totalAmount,
+            'status' => $newStatus,
+            'notes' => $request->notes,
+            'validated_by' => $request->validated_by,
+        ]);
+
+    
+        $order->load('orderItems.product');
+        Log::info("Order items count: " . $order->orderItems->count());
+
+        if ($oldStatus !== $newStatus) {
+    // Si la commande passe en Terminée => déduction du stock
+            if ($newStatus === 'Terminée') {
+                Log::info("Commande {$order->id} est maintenant Terminée, déduction du stock...");
+                Log::info(">>> ITEMS pour déduction: " . json_encode($order->orderItems->toArray()));
+                $this->stockService->deductStockForOrder($order);
+            } 
+    // Si elle repasse de Terminée vers autre chose => on remet le stock
+            elseif ($oldStatus === 'Terminée' && $newStatus !== 'Terminée') {
+                Log::info("Commande {$order->id} n'est plus Terminée, remise du stock...");
+                $this->stockService->replenishStockForOrder($order);
+            }
+        }
+
+
+        // 4. Envoyer notification fournisseur si besoin
+        if (in_array($newStatus, ['Validée', 'En préparation']) && !in_array($oldStatus, ['Validée', 'En préparation'])) {
+            $this->stockService->notifySuppliers($order);
+        }
+
+        DB::commit();
+        return redirect()->route('orders.index')->with('success', 'Commande mise à jour avec succès.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Erreur lors de la mise à jour de la commande: ' . $e->getMessage());
+        return redirect()->back()->withInput()->with('error', 'Une erreur est survenue lors de la mise à jour de la commande.');
     }
+}
+
 
     /**
      * Supprime une commande de la base de données.

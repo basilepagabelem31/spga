@@ -71,7 +71,7 @@ public function getBadgeClass(): string
             return 'bg-warning text-dark';
         case 'En préparation':
             return 'bg-info';
-        case 'En Livraison':
+        case 'En livraison':
             return 'bg-primary';
         case 'Terminée':
             return 'bg-dark';

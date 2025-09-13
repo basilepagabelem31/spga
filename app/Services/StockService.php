@@ -15,41 +15,60 @@ class StockService
      * Crée un mouvement de stock et met à jour le produit associé.
      * Ajout d'un paramètre $notes pour rendre le mouvement plus explicite.
      */
-    public function createStockMovement($productId, $quantity, $movementType, $referenceId, $movementDate, $notes = null)
-    {
-        $product = Product::find($productId);
-        if (!$product) {
-            Log::error("Tentative de création d'un mouvement de stock pour un produit inexistant (ID: {$productId}).");
-            return;
-        }
-
-        // Création du mouvement
-        Stock::create([
-            'product_id' => $productId,
-            'quantity' => $quantity,
-            'movement_type' => $movementType,
-            'reference_id' => $referenceId,
-            'movement_date' => $movementDate,
-            'notes' => $notes,
-        ]);
-
-        // Mise à jour du stock produit
-        if ($movementType === 'sortie') {
-            $product->decrement('current_stock_quantity', $quantity);
-        } elseif ($movementType === 'entrée') {
-            $product->increment('current_stock_quantity', $quantity);
-        }
-
-        $product->refresh();
-        $product->updateAvailabilityStatus();
-        $product->sendLowStockNotification();
+   public function createStockMovement($productId, $quantity, $movementType, $referenceId, $movementDate, $notes = null)
+{
+    $product = Product::find($productId);
+    if (!$product) {
+        Log::error("Tentative de création d'un mouvement de stock pour un produit inexistant (ID: {$productId}).");
+        return;
     }
 
+    // Création du mouvement
+    Stock::create([
+        'product_id' => $productId,
+        'quantity' => $quantity,
+        'movement_type' => $movementType,
+        'reference_id' => $referenceId,
+        'movement_date' => $movementDate,
+        'notes' => $notes,
+    ]);
+
+    // Mise à jour du stock produit - CORRECTION IMPORTANTE
+    if ($movementType === 'sortie') {
+        $product->current_stock_quantity -= $quantity;
+    } elseif ($movementType === 'entrée') {
+        $product->current_stock_quantity += $quantity;
+    }
+
+    // Sauvegarder les modifications
+    $product->save();
+
+    // Mettre à jour le statut
+    $product->updateAvailabilityStatus();
+
+    // Vérifier le stock bas
+    $this->checkLowStock($product);
+    
+    Log::info("Mouvement de stock: {$movementType} de {$quantity} pour produit ID: {$productId}. Nouveau stock: {$product->current_stock_quantity}");
+}
+
+
+protected function checkLowStock(Product $product)
+{
+    if ($product->alert_threshold !== null && 
+        $product->current_stock_quantity <= $product->alert_threshold) {
+        Log::info("⚠️ Stock bas pour le produit: {$product->name}");
+    }
+}
     /**
      * Déduit le stock pour une commande.
      */
     public function deductStockForOrder(Order $order)
     {
+        Log::info("Déduction du stock pour la commande: {$order->order_code}");
+        Log::info("Nombre d'items trouvés: " . $order->orderItems->count());
+
+
         foreach ($order->orderItems as $item) {
             $this->createStockMovement(
                 $item->product_id,
@@ -60,6 +79,9 @@ class StockService
                 'Déduction pour commande terminée'
             );
         }
+
+        Log::info("Déduction du stock terminée pour la commande: {$order->order_code}");
+
     }
 
     /**

@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Delivery;
 use App\Models\Order;
+use App\Services\StockService ;
 use App\Models\DeliveryRoute;
+use Illuminate\Support\Facades\Log;
+
 use App\Models\User;
 use App\Notifications\DeliveryCompletedNotification;
 use Illuminate\Http\Request;
@@ -67,11 +70,11 @@ public function index(Request $request)
 
         $delivery = Delivery::create($request->all());
 
-        // Mise à jour du statut de la commande associée en "En Livraison"
+        // Mise à jour du statut de la commande associée en "En livraison"
         try {
             $order = Order::find($request->order_id);
             if ($order) {
-                $order->status = 'En Livraison';
+                $order->status = 'En livraison';
                 $order->save();
             }
         } catch (\Exception $e) {
@@ -111,27 +114,32 @@ public function update(Request $request, Delivery $delivery)
         'notes' => 'nullable|string',
     ]);
 
+    $newStatus = $request->status;
+
+    // ✅ On laisse le modèle gérer la déduction/remise stock via booted()
     $delivery->update($request->all());
 
-    // --- Synchronisation de la commande ---
+    // --- Synchronisation de la commande (uniquement statut logique, stock géré ailleurs) ---
     $order = $delivery->order;
-    if ($order && $oldStatus !== $delivery->status) {
-        switch ($delivery->status) {
+    if ($order) {
+        switch ($newStatus) {
             case 'Terminée':
                 $order->status = 'Terminée';
                 break;
+
             case 'Annulée':
                 $order->status = 'Annulée';
                 break;
+
             case 'En cours':
-                $order->status = 'En Livraison';
+                $order->status = 'En livraison';
                 break;
         }
         $order->save();
     }
 
-    // Notification si nécessaire
-    if ($oldStatus !== 'Terminée' && $delivery->status === 'Terminée') {
+    // Notification client uniquement si passage en Terminée
+    if ($oldStatus !== 'Terminée' && $newStatus === 'Terminée') {
         $client = $delivery->order->user;
         if ($client) {
             $client->notify(new DeliveryCompletedNotification($delivery));
@@ -156,6 +164,7 @@ public function update(Request $request, Delivery $delivery)
 
     return redirect()->route('deliveries.index')->with('success', 'Livraison mise à jour avec succès.');
 }
+
     /**
      * Supprime une livraison de la base de données.
      */

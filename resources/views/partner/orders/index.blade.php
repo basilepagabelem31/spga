@@ -94,7 +94,7 @@
                                                     case 'En attente de validation': $icon = '⏳'; break;
                                                     case 'Validée': $icon = '👍'; break;
                                                     case 'En préparation': $icon = '📦'; break;
-                                                    case 'En Livraison': $icon = '🚚'; break;
+                                                    case 'En livraison': $icon = '🚚'; break;
                                                     case 'Livrée': $icon = '✅'; break;
                                                     case 'Terminée': $icon = '✅'; break;
                                                     case 'Annulée': $icon = '❌'; break;
