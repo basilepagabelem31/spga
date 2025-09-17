@@ -1,12 +1,20 @@
 <div class="bg-dark border-right" id="sidebar-wrapper">
     <div class="sidebar-heading text-white">SPGA-SARL</div>
     <div class="list-group list-group-flush">
+
+    
         
         {{-- Logique pour les administrateurs et superviseurs --}}
         @if (auth()->user()->hasAnyRole(['admin_principal', 'superviseur_commercial', 'superviseur_production']))
             <a href="{{ route('admin.dashboard') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('admin.dashboard')) active @endif">
                 <i class="fas fa-tachometer-alt me-2"></i> Tableau de bord
             </a>
+
+
+             {{-- Lien de navigation pour le profil, accessible à tous les utilisateurs connectés --}}
+        <a href="{{ route('profile.edit') }}" class="list-group-item list-group-item-action bg-dark text-white @if(request()->routeIs('profile.edit')) active @endif">
+            <i class="fas fa-user-circle me-2"></i> Mon Profil
+        </a>
 
             {{-- Section de la gestion des utilisateurs --}}
             <div class="list-group-item list-group-item-action bg-dark text-white">
@@ -144,6 +152,8 @@
                 <i class="fas fa-calendar-alt me-2"></i> Mon Planning
             </a>
         @endif
+        
+       
         
     </div>
 </div>

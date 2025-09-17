@@ -1,17 +1,76 @@
 /* resources/css/app.css */
 @import "bootstrap/dist/css/bootstrap.min.css";
 
-/* Vous pouvez ajouter votre propre CSS personnalisé ici
-   qui se chargera après Bootstrap */
-
-   #sidebar-wrapper {
-    /* Largeur de base pour les écrans plus larges que 768px */
-    width: 250px;
+/* ================================
+   Layout principal
+================================== */
+#wrapper {
+    display: flex;
+    overflow-x: hidden;
+    /* Correction : Laisser la hauteur s'adapter au contenu */
 }
 
-/* Vous pouvez ajuster la largeur pour des écrans plus petits si nécessaire */
-@media (max-width: 768px) {
+/* ================================
+   Sidebar (barre latérale)
+================================== */
+#sidebar-wrapper {
+    flex-shrink: 0;
+    width: 250px;
+    background-color: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    transition: margin-left .25s ease-in-out;
+}
+
+/* ================================
+   Contenu principal
+================================== */
+#page-content-wrapper {
+    flex-grow: 1;
+    padding: 0;
+    overflow-x: hidden;
+    width: 100%;
+}
+
+/* ================================
+   Comportement responsive
+================================== */
+/* Pour les écrans plus petits que 768px (mobile) */
+@media (max-width: 767.98px) {
     #sidebar-wrapper {
-        width: 220px;
+        margin-left: -250px; /* Masque la sidebar par défaut */
+        position: fixed;
+        z-index: 1030;
+        height: 100vh;
+        overflow-y: auto;
+    }
+
+    #wrapper.toggled #sidebar-wrapper {
+        margin-left: 0; /* Affiche la sidebar quand toggled */
+    }
+
+    #page-content-wrapper {
+        margin-left: 0;
+    }
+}
+
+/* Pour les écrans plus larges que 768px */
+@media (min-width: 768px) {
+    #sidebar-wrapper {
+        /* Correction : Laisser la hauteur s'adapter au contenu */
+        min-height: 100vh;
+        margin-left: 0; /* Garde la sidebar visible */
+    }
+
+    #page-content-wrapper {
+        margin-left: 0;
+        width: calc(100% - 250px);
+    }
+
+    #wrapper.toggled #sidebar-wrapper {
+        margin-left: -250px;
+    }
+
+    #wrapper.toggled #page-content-wrapper {
+        width: 100%;
     }
 }

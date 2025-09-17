@@ -35,9 +35,10 @@
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="desired_delivery_date" class="form-label">Date de livraison souhaitée</label>
-                            <input type="text" class="form-control" id="desired_delivery_date" name="desired_delivery_date" value="{{ old('desired_delivery_date') }}" placeholder="Ex: 25/12/2024 ou Semaine 48">
-                        </div>
+                            <label for="desired_delivery_date" class="form-label">Date de livraison souhaitée <span class="text-danger">*</span></label>
+<input type="date" class="form-control" id="desired_delivery_date" name="desired_delivery_date"
+       value="{{ old('desired_delivery_date') }}"
+       placeholder="Ex: 25/12/2024 ou Semaine 48">                        </div>
                         <div class="col-md-6 mb-3">
                             <label for="delivery_mode" class="form-label">Mode de livraison <span class="text-danger">*</span></label>
                             <select class="form-select" id="delivery_mode" name="delivery_mode" required>
@@ -50,11 +51,11 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="delivery_location" class="form-label">Lieu de livraison</label>
+                        <label for="delivery_location" class="form-label">Lieu de livraison  <span class="text-danger">*</span></label>
                         <textarea class="form-control" id="delivery_location" name="delivery_location" rows="2">{{ old('delivery_location') }}</textarea>
                     </div>
                     <div class="mb-3">
-                        <label for="geolocation" class="form-label">Géolocalisation (URL ou Coordonnées)</label>
+                        <label for="geolocation" class="form-label">Géolocalisation (URL ou Coordonnées) <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="geolocation" name="geolocation" value="{{ old('geolocation') }}">
                     </div>
 

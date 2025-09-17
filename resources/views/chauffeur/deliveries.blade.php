@@ -21,23 +21,29 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted">ID Livraison</th>
-                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted">Client</th>
-                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted">Adresse</th>
-                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted">Date & Heure</th>
-                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted">Statut</th>
-                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-end">Actions</th>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">ID</th>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Client</th>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Adr. Livraison</th>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Adr. Client</th>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Géolocalisation</th>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Date Livraison</th>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Notes </th>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Statut</th>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-end text-nowrap">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($deliveries as $delivery)
                             <tr class="transition-transform-hover">
-                                <td class="px-4 py-3 fw-medium text-gray-900">#{{ $delivery->id }}</td>
-                                <td class="px-4 py-3 text-gray-700">{{ $delivery->order->client->name ?? 'N/A' }}</td>
-                                <td class="px-4 py-3 text-gray-700">{{ $delivery->address ?? $delivery->order->shipping_address ?? 'N/A' }}</td>
-                                <td class="px-4 py-3 text-gray-700">
-                                    {{ \Carbon\Carbon::parse($delivery->created_at)->format('d/m/Y H:i') }}
+                                <td class="px-4 py-3 fw-medium text-gray-900 text-nowrap">#{{ $delivery->id }}</td>
+                                <td class="px-4 py-3 text-gray-700 text-nowrap">{{ $delivery->order->client->name ?? 'N/A' }}</td>
+                                <td class="px-4 py-3 text-gray-700 text-nowrap">{{ $delivery->order->delivery_location ?? 'N/A' }}</td>
+                                <td class="px-4 py-3 text-gray-700 text-nowrap">{{ $delivery->order->client->address ?? 'N/A' }}</td>
+                                <td class="px-4 py-3 text-gray-700 text-nowrap">{{ $delivery->order->geolocation ?? 'N/A' }}</td>
+                                <td class="px-4 py-3 text-gray-700 text-nowrap">
+                                    {{ \Carbon\Carbon::parse($delivery->order->desired_delivery_date)->format('d/m/Y') ?? 'N/A' }}
                                 </td>
+                                <td class="px-4 py-3 text-gray-700 text-nowrap">{{ $delivery->notes ?? 'N/A' }}</td>
                                 <td class="px-4 py-3">
                                     @php
                                         $badgeClass = '';
@@ -50,7 +56,7 @@
                                     @endphp
                                     <span class="badge {{ $badgeClass }}">{{ ucfirst($delivery->status) }}</span>
                                 </td>
-                                <td class="px-4 py-3 text-end">
+                                <td class="px-4 py-3 text-end text-nowrap">
                                     @if($delivery->status !== 'Terminée')
                                         <form action="{{ route('chauffeur.deliveries.complete', $delivery->id) }}" method="POST" class="d-inline">
                                             @csrf
@@ -66,7 +72,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center py-5 text-muted">Aucune livraison assignée pour le moment.</td>
+                                <td colspan="9" class="text-center py-5 text-muted">Aucune livraison assignée pour le moment.</td>
                             </tr>
                         @endforelse
                     </tbody>

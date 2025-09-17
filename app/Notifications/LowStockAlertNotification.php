@@ -29,19 +29,19 @@ class LowStockAlertNotification extends Notification
 
     /**
      * Obtient la représentation de la notification pour le canal e-mail.
-     * Le style utilisé ici est le standard de Laravel, similaire à votre e-mail.
      */
     public function toMail(object $notifiable): MailMessage
     {
+        // On récupère les données dont la vue a besoin
+        $productName = $this->product->name;
+        $currentStock = $this->product->current_stock_quantity;
+        $alertThreshold = $this->product->alert_threshold;
+        $saleUnit = $this->product->sale_unit;
+
+        // On retourne un MailMessage qui utilise votre vue
         return (new MailMessage)
-                    ->error()
                     ->subject('Alerte de Stock Faible: ' . $this->product->name)
-                    ->greeting("Bonjour {$notifiable->name},")
-                    ->line("Le stock du produit **{$this->product->name}** est tombé en dessous de son seuil d'alerte.")
-                    ->line("Stock Actuel : **" . number_format($this->product->current_stock_quantity, 2) . " " . $this->product->sale_unit . "**")
-                    ->line("Seuil d'Alerte : **" . number_format($this->product->alert_threshold, 2) . " " . $this->product->sale_unit . "**")
-                    ->action('Voir le produit', url(route('products.show', $this->product->id)))
-                    ->line('Veuillez prendre les mesures nécessaires.');
+                    ->view('emails.low-stock-alert', compact('productName', 'currentStock', 'alertThreshold', 'saleUnit'));
     }
 
     /**

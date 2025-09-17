@@ -65,10 +65,7 @@
                             @endphp
                             <span><span class="badge {{ $badgeClass }}">{{ $qualityControl->control_result }}</span></span>
                         </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <strong>Signature :</strong>
-                            <span>{{ $qualityControl->responsible_signature_qc ?? 'Non renseigné' }}</span>
-                        </li>
+                       
                     </ul>
                 </div>
             </div>

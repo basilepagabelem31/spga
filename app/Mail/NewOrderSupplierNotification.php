@@ -19,6 +19,7 @@ class NewOrderSupplierNotification extends Mailable
     public $order;
     public $orderItem;
     public $client;
+    public $orderStatus; // 👈 ajout
 
     /**
      * Create a new message instance.
@@ -28,6 +29,7 @@ class NewOrderSupplierNotification extends Mailable
         $this->order = $order;
         $this->orderItem = $orderItem;
         $this->client = $client;
+        $this->orderStatus = $order->status; // 👈 on garde le statut séparé
     }
 
     /**
@@ -48,12 +50,13 @@ class NewOrderSupplierNotification extends Mailable
         return new Content(
             view: 'emails.new-order-supplier-notification',
             with: [
-                'orderCode' => $this->order->order_code,
-                'clientName' => $this->client->name, // Supposons que le modèle User a une propriété 'name'
-                'productName' => $this->orderItem->product->name,
+                'orderCode'     => $this->order->order_code,
+                'clientName'    => $this->client->name,
+                'productName'   => $this->orderItem->product->name,
                 'orderedQuantity' => $this->orderItem->quantity,
-                'saleUnit' => $this->orderItem->product->sale_unit,
-                'currentStock' => $this->orderItem->product->current_stock_quantity,
+                'saleUnit'      => $this->orderItem->product->sale_unit,
+                'currentStock'  => $this->orderItem->product->current_stock_quantity,
+                'orderStatus'   => $this->orderStatus, // 👈 bien passé à la vue
             ],
         );
     }

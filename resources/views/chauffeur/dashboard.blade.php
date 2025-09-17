@@ -23,7 +23,7 @@
                     </div>
                 </div>
                 <div class="card-footer d-flex align-items-center justify-content-between small">
-                    <a class="text-white stretched-link text-decoration-none" href="{{ route('chauffeur.deliveries') }}">
+                    <a class="text-white stretched-link text-decoration-none" href="{{ route('chauffeur.deliveries', ['date' => now()->toDateString()]) }}">
                         Voir les tournées
                     </a>
                     <div class="text-white"><i class="fas fa-angle-right"></i></div>
@@ -44,7 +44,7 @@
                     </div>
                 </div>
                 <div class="card-footer d-flex align-items-center justify-content-between small">
-                    <a class="text-white stretched-link text-decoration-none" href="{{ route('chauffeur.deliveries') }}">
+                    <a class="text-white stretched-link text-decoration-none" href="{{ route('chauffeur.deliveries', ['status' => 'En cours']) }}">
                         Détails de la livraison
                     </a>
                     <div class="text-white"><i class="fas fa-angle-right"></i></div>
@@ -65,7 +65,7 @@
                     </div>
                 </div>
                 <div class="card-footer d-flex align-items-center justify-content-between small">
-                    <a class="text-white stretched-link text-decoration-none" href="{{ route('chauffeur.deliveries') }}">
+                    <a class="text-white stretched-link text-decoration-none" href="{{ route('chauffeur.deliveries', ['status' => 'Terminée']) }}">
                         Historique des livraisons
                     </a>
                     <div class="text-white"><i class="fas fa-angle-right"></i></div>
@@ -81,7 +81,9 @@
                         <div class="me-3">
                             <div class="text-white-75 small">Prochaine livraison à</div>
                             @if($nextDelivery)
-                                <div class="text-lg fw-bold">{{ \Carbon\Carbon::parse($nextDelivery->created_at)->format('H:i') }}</div>
+                                <div class="text-lg fw-bold">
+                                    {{ $nextDelivery ? \Carbon\Carbon::parse($nextDelivery->planned_delivery_time)->format('H:i') : 'N/A' }}
+                            </div>
                             @else
                                 <div class="text-lg fw-bold">N/A</div>
                             @endif

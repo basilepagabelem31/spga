@@ -52,6 +52,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    
+    // Nouvelle route pour la mise à jour du mot de passe
+    Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
 });
 
 
@@ -182,6 +185,9 @@ Route::middleware(['auth', 'role:client'])->prefix('client')->name('client.')->g
     Route::get('/orders/create', [ClientController::class, 'createOrder'])->name('orders.create');
     Route::post('/orders', [ClientController::class, 'storeOrder'])->name('orders.store');
     Route::get('/orders/{order}', [ClientController::class, 'showOrder'])->name('orders.show');
+    // Annuler une commande
+    Route::post('/orders/{order}/cancel', [ClientController::class, 'cancelOrder'])->name('orders.cancel');
+
 });
 
 

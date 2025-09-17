@@ -8,15 +8,7 @@
 @endsection
 
 
-@if ($errors->any())
-    <div class="alert alert-danger">
-        <ul>
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
+
 
 
 @section('content')
@@ -98,6 +90,26 @@
                     <label for="notes" class="form-label">Notes supplémentaires</label>
                     <textarea name="notes" id="notes" class="form-control" rows="3"></textarea>
                 </div>
+
+
+                {{-- Date de livraison souhaitée --}}
+<div class="mb-4">
+    <label for="desired_delivery_date" class="form-label">Date de livraison souhaitée <span class="text-danger">*</span></label>
+    <input type="date" name="desired_delivery_date" id="desired_delivery_date" class="form-control">
+</div>
+
+{{-- Lieu de livraison --}}
+<div class="mb-4">
+    <label for="delivery_location" class="form-label">Lieu de livraison <span class="text-danger">*</span></label>
+    <input type="text" name="delivery_location" id="delivery_location" class="form-control" placeholder="Ex: Quartier, Rue, Ville">
+</div>
+
+{{-- Géolocalisation --}}
+<div class="mb-4">
+    <label for="geolocation" class="form-label">Géolocalisation <span class="text-danger">*</span></label>
+    <input type="text" name="geolocation" id="geolocation" class="form-control" placeholder="Ex: 14.6928,-17.4467">
+</div>
+
 
                 <button type="submit" class="btn btn-success"><i class="fas fa-check me-1"></i> Confirmer la commande</button>
             </form>

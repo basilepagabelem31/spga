@@ -25,7 +25,8 @@ class Order extends Model
     ];
 
     protected $casts = [
-        'order_date' => 'datetime',
+    'order_date' => 'datetime',
+    'desired_delivery_date' => 'date',
     ];
 
 

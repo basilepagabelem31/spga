@@ -32,6 +32,20 @@
         }
 
 
+
+        .team-member-card img {
+    width: 150px;        /* taille fixe */
+    height: 150px;
+    object-fit: cover;   /* recadre sans déformer */
+    object-position: top; /* aligne vers le haut pour garder la tête visible */
+    border-radius: 50%;  /* cercle, optionnel */
+    display: block;
+    margin: 0 auto;
+}
+
+
+
+
 #map {
     height: 300px;
     width: 100%;
@@ -272,7 +286,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body text-center">
-                <img src="{{asset('images/agriculture/fourn.jpg')}}" class="img-fluid rounded-4 mb-4" alt="Image pour les Fournisseurs">
+                <img src="{{asset('images/agriculture/fournisseur.jpg')}}" class="img-fluid rounded-4 mb-4" alt="Image pour les Fournisseurs">
                 <h3 class="fw-bold text-success mb-3">Nos Fournisseurs</h3>
                 <p class="lead text-muted">
                     Nous travaillons avec des fournisseurs locaux et régionaux pour garantir la qualité et la diversité de nos produits. La plateforme simplifie les échanges et la gestion des commandes.
@@ -289,7 +303,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body text-center">
-                <img src="{{asset('images/agriculture/gros.jpg')}}" class="img-fluid rounded-4 mb-4" alt="Image pour les Grossistes">
+                <img src="{{asset('images/agriculture/grossistepartenaire.jpg')}}" class="img-fluid rounded-4 mb-4" alt="Image pour les Grossistes">
                 <h3 class="fw-bold text-success mb-3">Nos Grossistes Partenaires</h3>
                 <p class="lead text-muted">
                     Des partenariats solides pour une distribution efficace. La plateforme leur fournit des outils pour une collaboration fluide et des transactions simplifiées.
@@ -354,47 +368,41 @@
     <div class="container my-5">
         <h2 class="display-5 fw-bold text-white mb-5">Rencontrez notre équipe de direction</h2>
         <div class="row g-5 justify-content-center">
+            
             <div class="col-md-6 col-lg-3">
                 <div class="card team-member-card text-center pb-3 pt-5 shadow-sm">
-                    <img src="{{ asset('images/equipes/fem.jpg') }}" class="mx-auto" alt="Directeur Principal">
+                    <img src="{{ asset('images/equipes/directeur.jpg') }}" alt="Directeur Principal">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold mt-2">Nom du Directeur Principal</h5>
-                        <p class="text-muted mb-0">Directeur Principal (Administrateur)</p>
+                        <h5 class="card-title fw-bold mt-2">Monsieur SOULAMA Sibiri</h5>
+                        <p class="text-muted mb-0">Directeur Principal </p>
                     </div>
                 </div>
             </div>
+
             <div class="col-md-6 col-lg-3">
                 <div class="card team-member-card text-center pb-3 pt-5 shadow-sm">
-                    <img src="{{ asset('images/equipes/direct.jpg') }}" class="mx-auto" alt="Superviseur Commercial">
+                    <img src="{{ asset('images/equipes/commercial.jpg') }}" alt="Superviseur Commercial">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold mt-2">Nom du Sous-Directeur Commercial</h5>
-                        <p class="text-muted mb-0">Sous-Directeur Commercial</p>
+                        <h5 class="card-title fw-bold mt-2">Monsieur COULIBALY S. Innocent</h5>
+                        <p class="text-muted mb-0">Directeur Commercial</p>
                     </div>
                 </div>
             </div>
+
             <div class="col-md-6 col-lg-3">
                 <div class="card team-member-card text-center pb-3 pt-5 shadow-sm">
-                    <img src="{{ asset('images/equipes/su.jpg') }}" class="mx-auto" alt="Superviseur Administratif">
+                    <img src="{{ asset('images/equipes/directrice administratif.jpg') }}" alt="Superviseur Administratif">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold mt-2">Nom du Sous-Directeur Administratif</h5>
-                        <p class="text-muted mb-0">Sous-Directeur Administratif & Financier</p>
+                        <h5 class="card-title fw-bold mt-2">Mademoiselle ZONGO Adjara</h5>
+                        <p class="text-muted mb-0">Directrice Administrative & Financière</p>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6 col-lg-3">
-               <div class="card team-member-card text-center pb-3 pt-5 shadow-sm">
-    <img src="{{ asset('images/equipes/super.jpg') }}" class="mx-auto" alt="Superviseur Technique">
-    <div class="card-body">
-        <h5 class="card-title fw-bold mt-2">Nom du Sous-Directeur Technique</h5>
-        <p class="text-muted mb-0">Sous-Directeur Technique & Production</p>
-    </div>
-</div>
-                </div>
-            </div>
+
         </div>
-       
     </div>
 </section>
+
 
 <section id="features" class="py-5">
     <div class="container my-5">
@@ -509,8 +517,8 @@
                 <h5 class="text-white">Contact</h5>
                 <ul class="list-unstyled">
                     <li><i class="fas fa-map-marker-alt me-2 text-success"></i> <a href="#" class="text-white-50 text-decoration-none">Ouagadougou, Burkina Faso</a></li>
-                    <li><i class="fas fa-envelope me-2 text-success"></i> <a href="mailto:contact@spga-sarl.com" class="text-white-50 text-decoration-none">contact@spga-sarl.com</a></li>
-                    <li><i class="fab fa-whatsapp me-2 text-success"></i> <a href="https://wa.me/22600000000" class="text-white-50 text-decoration-none">+226 00 00 00 00</a></li>
+                    <li><i class="fas fa-envelope me-2 text-success"></i> <a href="mailto:dg.spga@gmail.com" class="text-white-50 text-decoration-none">dg.spga@gmail.com</a></li>
+                    <li><i class="fab fa-whatsapp me-2 text-success"></i> <a href="https://wa.me/22600000000" class="text-white-50 text-decoration-none">+226 73 32 78 45</a></li>
                 </ul>
             </div>
             <div class="col-md-4 mb-4">

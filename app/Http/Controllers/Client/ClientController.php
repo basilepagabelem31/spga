@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Services\StockService;
 use App\Models\Order;
+use Illuminate\Support\Facades\Log;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\OrderItem;
@@ -123,6 +124,12 @@ class ClientController extends Controller
         return view('client.products.index', compact('products'));
     }
 
+
+
+
+
+
+
     /**
      * Affiche le formulaire de création d'une nouvelle commande.
      */
@@ -144,14 +151,17 @@ class ClientController extends Controller
  */
 public function storeOrder(Request $request)
 {
-    $validatedData = $request->validate([
-        'payment_mode' => 'required|string|in:paiement_mobile,paiement_a_la_livraison,virement_bancaire',
-        'delivery_mode' => 'required|string|in:standard_72h,express_6_12h',
-        'notes' => 'nullable|string|max:1000',
-        'products' => 'required|array|min:1',
-        'products.*.id' => 'required|integer|exists:products,id',
-        'products.*.quantity' => 'required|numeric|min:0.01',
-    ]);
+$validatedData = $request->validate([
+    'payment_mode' => 'required|string|in:paiement_mobile,paiement_a_la_livraison,virement_bancaire',
+    'delivery_mode' => 'required|string|in:standard_72h,express_6_12h',
+    'notes' => 'nullable|string|max:1000',
+    'products' => 'required|array|min:1',
+    'products.*.id' => 'required|integer|exists:products,id',
+    'products.*.quantity' => 'required|numeric|min:0.01',
+    'desired_delivery_date' => 'required|date',
+    'delivery_location' => 'required|string|max:255',
+    'geolocation' => 'required|string|max:255',
+]);
 
     try {
         DB::beginTransaction();
@@ -188,10 +198,13 @@ public function storeOrder(Request $request)
         }
 
         // Création de la commande
-        $order = Order::create([
+       $order = Order::create([
             'client_id' => Auth::id(),
             'order_code' => 'ORD-' . Str::random(8),
             'order_date' => now(),
+            'desired_delivery_date' => $validatedData['desired_delivery_date'] ?? null,
+            'delivery_location' => $validatedData['delivery_location'] ?? null,
+            'geolocation' => $validatedData['geolocation'] ?? null,
             'delivery_mode' => $validatedData['delivery_mode'],
             'payment_mode' => $validatedData['payment_mode'],
             'status' => 'En attente de validation',
@@ -222,6 +235,13 @@ public function storeOrder(Request $request)
 
         DB::commit();
 
+        try {
+            $order->load('orderItems.product', 'client');
+            $this->stockService->notifySuppliers($order);
+        } catch (\Throwable $e) {
+            Log::error("Erreur notification fournisseurs (client) pour commande {$order->id} : " . $e->getMessage());
+        }
+
         return redirect()->route('client.orders.show', $order)->with('success', 'Votre commande a été passée avec succès !');
 
     } catch (\Exception $e) {
@@ -242,6 +262,38 @@ public function storeOrder(Request $request)
 
     //     return view('client.products.show', compact('product'));
     // }
+
+
+
+
+    public function cancelOrder(Order $order)
+{
+    if ($order->client_id !== Auth::id()) {
+        abort(403, 'Accès non autorisé.');
+    }
+
+    // Seules certaines commandes peuvent être annulées
+    if (!in_array($order->status, ['En attente de validation', 'Validée', 'En préparation'])) {
+        return redirect()->back()->with('error', 'Cette commande ne peut plus être annulée.');
+    }
+
+    try {
+        DB::beginTransaction();
+
+        $order->status = 'Annulée';
+        $order->save();
+
+        // Réinjecter le stock
+        $this->stockService->replenishStockForOrder($order);
+
+        DB::commit();
+        return redirect()->route('client.orders')->with('success', 'Commande annulée avec succès.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return redirect()->back()->with('error', 'Erreur lors de l\'annulation : '.$e->getMessage());
+    }
+}
+
 
 
 

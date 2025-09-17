@@ -94,9 +94,44 @@
                                     <span class="badge {{ $badgeClass }}">{{ ucfirst($order->status) }}</span>
                                 </td>
                                 <td>{{ number_format($order->total_amount, 2, ',', ' ') }} FCFA</td>
+                               
+
                                 <td>
-                                    <a href="{{ route('client.orders.show', $order) }}" class="btn btn-sm btn-info text-white">Détails</a>
-                                </td>
+    <a href="{{ route('client.orders.show', $order) }}" class="btn btn-sm btn-info text-white">Détails</a>
+
+    @if(in_array($order->status, ['En attente de validation', 'Validée', 'En préparation']))
+        <!-- Bouton qui ouvre le modal -->
+        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#cancelOrderModal{{ $order->id }}">
+            <i class="fas fa-times"></i> Annuler
+        </button>
+
+        <!-- Modal de confirmation -->
+        <div class="modal fade" id="cancelOrderModal{{ $order->id }}" tabindex="-1" aria-labelledby="cancelOrderModalLabel{{ $order->id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title" id="cancelOrderModalLabel{{ $order->id }}">Confirmer l'annulation</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    </div>
+                    <div class="modal-body">
+                        Êtes-vous sûr de vouloir annuler la commande <strong>#{{ $order->order_code }}</strong> ?
+                        <br>
+                        Cette action est irréversible.
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Non</button>
+                        <form action="{{ route('client.orders.cancel', $order) }}" method="POST" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-danger">Oui, annuler</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+</td>
+
+
                             </tr>
                         @empty
                             <tr>

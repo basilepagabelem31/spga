@@ -34,10 +34,12 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="desired_delivery_date_edit_{{ $order->id }}" class="form-label">Date de livraison souhaitée</label>
-                            <input type="text" class="form-control" id="desired_delivery_date_edit_{{ $order->id }}" name="desired_delivery_date" value="{{ old('desired_delivery_date', $order->desired_delivery_date) }}" placeholder="Ex: 25/12/2024 ou Semaine 48">
-                        </div>
+                       <div class="col-md-6 mb-3">
+    <label for="desired_delivery_date_edit_{{ $order->id }}" class="form-label">Date de livraison souhaitée</label>
+    <input type="date" class="form-control" id="desired_delivery_date_edit_{{ $order->id }}" name="desired_delivery_date"
+           value="{{ old('desired_delivery_date', $order->desired_delivery_date?->format('Y-m-d')) }}"
+           placeholder="Ex: 25/12/2024 ou Semaine 48">
+</div>
                         <div class="col-md-6 mb-3">
                             <label for="delivery_mode_edit_{{ $order->id }}" class="form-label">Mode de livraison <span class="text-danger">*</span></label>
                             <select class="form-select" id="delivery_mode_edit_{{ $order->id }}" name="delivery_mode" required>

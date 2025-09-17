@@ -142,7 +142,7 @@
                                             <span class="badge {{ $badgeClass }}">{{ ucfirst($order->status) }}</span>
                                         </td>
                                         <td>{{ number_format($order->total_amount, 2, ',', ' ') }} FCFA</td>
-                                        <td><a href="#" class="btn btn-sm btn-outline-info">Voir</a></td>
+                                        <td><a href="{{ route('client.orders.show', $order) }}" class="btn btn-sm btn-info text-white">Détails</a></td>
                                     </tr>
                                 @empty
                                     <tr>

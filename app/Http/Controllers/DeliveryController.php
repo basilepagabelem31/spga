@@ -16,6 +16,14 @@ use Illuminate\Support\Facades\DB;
 
 class DeliveryController extends Controller
 {
+
+
+     protected $stockService;
+
+    public function __construct(StockService $stockService)
+    {
+        $this->stockService = $stockService;
+    }
    /**
  * Affiche la liste des livraisons et passe les données pour le filtrage.
  */
@@ -23,9 +31,9 @@ public function index(Request $request)
 {
     // Récupère uniquement les commandes qui ne sont pas encore associées à une livraison
     // et dont le statut n'est pas "En attente de validation".
-    $orders = Order::whereDoesntHave('delivery')
-                   ->where('status', '!=', 'En attente de validation')
-                   ->get(); 
+$orders = Order::whereDoesntHave('delivery')
+               ->whereIn('status', ['Validée', 'En préparation'])
+               ->get();
                    
     // Chargement de la relation 'driver' pour chaque tournée de livraison
     $deliveryRoutes = DeliveryRoute::where('status', '!=', 'Terminée')->with('driver')->get();
@@ -138,13 +146,26 @@ public function update(Request $request, Delivery $delivery)
         $order->save();
     }
 
-    // Notification client uniquement si passage en Terminée
+    // Si la livraison passe en Terminée
     if ($oldStatus !== 'Terminée' && $newStatus === 'Terminée') {
-        $client = $delivery->order->user;
+        $order = $delivery->order;
+
+    // 1) Notifier le client
+        $client = $order->user ?? null;
         if ($client) {
             $client->notify(new DeliveryCompletedNotification($delivery));
         }
+
+    // 2) Déduire le stock
+        if ($order) {
+            $this->stockService->deductStockForOrder($order);
+
+        // 3) Notifier les fournisseurs
+            $order->load('orderItems.product.partner.user', 'client');
+            $this->stockService->notifySuppliers($order);
+        }
     }
+
 
     // Mise à jour du statut de la tournée
     $deliveryRoute = DeliveryRoute::find($delivery->delivery_route_id);

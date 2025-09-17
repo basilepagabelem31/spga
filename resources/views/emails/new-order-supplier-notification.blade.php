@@ -27,6 +27,8 @@
                     <li><strong>Produit Commandé :</strong> {{ $productName }}</li>
                     <li><strong>Quantité Commandée :</strong> {{ number_format($orderedQuantity, 2) }} {{ $saleUnit }}</li>
                     <li><strong>Stock Restant :</strong> {{ number_format($currentStock, 2) }} {{ $saleUnit }}</li>
+                    <li><strong>Statut de la Commande :</strong> {{ $orderStatus }}</li>
+
                 </ul>
             </div>
 
