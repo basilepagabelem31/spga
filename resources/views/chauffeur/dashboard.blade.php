@@ -134,7 +134,7 @@
                                 <tr>
                                     <th>N° Commande</th>
                                     <th>Client</th>
-                                    <th>Adresse</th>
+                                    <th>Adresse.Livraison</th>
                                     <th>Statut</th>
                                     <th>Action</th>
                                 </tr>
@@ -144,7 +144,7 @@
                                     <tr>
                                         <td>#{{ $delivery->id }}</td>
                                         <td>{{ $delivery->order->client->name ?? 'N/A' }}</td>
-                                        <td>{{ $delivery->address ?? $delivery->order->shipping_address ?? 'N/A' }}</td>
+                                <td class="px-4 py-3 text-gray-700 text-nowrap">{{ $delivery->order->delivery_location ?? 'N/A' }}</td>
                                         <td>
                                             @php
                                                 $badgeClass = '';

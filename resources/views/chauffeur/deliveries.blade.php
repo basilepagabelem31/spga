@@ -4,7 +4,6 @@
 
 @section('content')
 <div class="container-fluid py-4">
-    {{-- Titre dynamique qui change en fonction de la source de la navigation --}}
     @if(request()->has('route_id'))
         <h1 class="h2 fw-bold mb-4">
             <i class="fas fa-truck-moving me-2 text-primary"></i> Livraisons de la tournée #{{ request()->input('route_id') }}
@@ -15,6 +14,38 @@
         </h1>
     @endif
 
+    {{-- Formulaire de filtres de recherche --}}
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body">
+<form action="{{ route('chauffeur.deliveries') }}" method="GET" class="row g-3 align-items-end">
+    <input type="hidden" name="route_id" value="{{ request('route_id') }}">
+    <div class="col-md-4">
+        <label for="filter_status" class="form-label">Statut</label>
+        <select name="status" id="filter_status" class="form-select">
+            <option value="">Tous les statuts</option>
+            <option value="En cours" {{ request('status') === 'En cours' ? 'selected' : '' }}>En cours</option>
+            <option value="Terminée" {{ request('status') === 'Terminée' ? 'selected' : '' }}>Terminée</option>
+            <option value="Annulée" {{ request('status') === 'Annulée' ? 'selected' : '' }}>Annulée</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label for="filter_date" class="form-label">Date de livraison souhaitée</label>
+        {{-- ATTENTION ICI : Changez le 'name' en 'desired_delivery_date' pour correspondre au contrôleur --}}
+        <input type="date" name="desired_delivery_date" id="filter_date" class="form-control" value="{{ request('desired_delivery_date') }}">
+    </div>
+    <div class="col-md-4 d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary me-2">
+            <i class="fas fa-filter me-1"></i> Filtrer
+        </button>
+        <a href="{{ route('chauffeur.deliveries', ['route_id' => request('route_id')]) }}" class="btn btn-secondary">
+            <i class="fas fa-times me-1"></i> Réinitialiser
+        </a>
+    </div>
+</form>
+        </div>
+    </div>
+
+    {{-- Votre tableau de livraisons --}}
     <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
         <div class="card-body p-0">
             <div class="table-responsive">

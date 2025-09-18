@@ -1,19 +1,22 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Traits\LogsActivity;
 use App\Models\User;
 use App\Models\Product;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth; // <-- L'importation correcte
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
+    use LogsActivity;
+
     protected $stockService;
 
     public function __construct(StockService $stockService)
@@ -295,6 +298,48 @@ class OrderController extends Controller
             Log::error('Erreur lors de la suppression de la commande: ' . $e->getMessage());
             Log::error($e->getTraceAsString());
             return redirect()->back()->with('error', 'Une erreur est survenue lors de la suppression de la commande.');
+        }
+    }
+
+
+
+    public function validateOrder(Order $order)
+    {
+
+        $old_status = $order->status;
+        // 1. Vérifier si l'état de la commande permet la validation
+        if ($order->status !== 'En attente de validation') {
+            return back()->with('error', 'Cette commande ne peut pas être validée.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // 2. Mettre à jour le statut de la commande
+            $order->status = 'Validée';
+            
+            // 3. Assigner l'ID de l'utilisateur qui effectue l'action
+            $order->validated_by = Auth::id(); // Assurez-vous que cette colonne existe
+
+            $order->save();
+
+            DB::commit();
+
+                    // Enregistrer l'action de log après la sauvegarde réussie
+        $this->recordLog(
+            'validation_commande',
+            'orders',
+            $order->id,
+            ['status' => $old_status],
+            ['status' => $order->status, 'validated_by' => $order->validated_by]
+        );
+
+            return back()->with('success', 'La commande a été validée avec succès.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la validation de la commande: ' . $e->getMessage());
+            return back()->with('error', 'Une erreur est survenue lors de la validation de la commande.');
         }
     }
 }

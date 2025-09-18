@@ -59,34 +59,38 @@ public function index()
 
     /* Affiche la liste complète des livraisons du chauffeur avec filtres.
      */
-    public function deliveries(Request $request)
-    {
-        $driverId = Auth::id();
-        $query = Delivery::query();
+// Fichier: ChauffeurController.php
 
-        // Récupérer les livraisons de l'utilisateur connecté
-        $query->whereHas('deliveryRoute', function ($q) use ($driverId) {
-            $q->where('driver_id', $driverId);
-        })
-        ->with('order.client'); // 👈 L'ajout clé est ici pour charger les relations
+public function deliveries(Request $request)
+{
+    $driverId = Auth::id();
+    $query = Delivery::query();
 
-        // 🟢 NOUVEAU: Filtrage par statut si 'status' est présent
-        if ($request->has('status')) {
-            $query->where('status', $request->input('status'));
-        }
+    $query->whereHas('deliveryRoute', function ($q) use ($driverId) {
+        $q->where('driver_id', $driverId);
+    })->with('order.client');
 
-        // 🟢 NOUVEAU: Filtrage par date si 'date' est présent
-        if ($request->has('date')) {
-            $query->whereDate('created_at', $request->input('date'));
-        }
-
-        // Ajout de la pagination et du tri par date de création (les plus récentes en premier)
-        $deliveries = $query->orderBy('created_at', 'desc')
-                           ->paginate(10)
-                           ->withQueryString();
-
-        return view('chauffeur.deliveries', compact('deliveries'));
+    if ($request->has('route_id')) {
+        $query->where('delivery_route_id', $request->input('route_id'));
     }
+
+    if ($request->has('status')) {
+        $query->where('status', $request->input('status'));
+    }
+
+    // Le filtre de date doit chercher le nom 'date' qui vient de la vue.
+    if ($request->has('date') && $request->input('date')) {
+        $query->whereHas('order', function ($q) use ($request) {
+            $q->whereDate('desired_delivery_date', $request->input('date'));
+        });
+    }
+
+    $deliveries = $query->orderBy('created_at', 'desc')
+        ->paginate(10)
+        ->withQueryString();
+
+    return view('chauffeur.deliveries', compact('deliveries'));
+}
 
     public function completeDelivery(Delivery $delivery)
     {
@@ -142,15 +146,25 @@ public function index()
         }
     }
 
-    public function planning()
-    {
-        $driverId = Auth::id();
-        
-        $deliveryRoutes = DeliveryRoute::where('driver_id', $driverId)
-                                     ->orderBy('delivery_date', 'asc')
-                                     ->with('deliveries')
-                                     ->get();
+   public function planning(Request $request)
+{
+    $driverId = Auth::id();
+    
+    $query = DeliveryRoute::where('driver_id', $driverId)
+        ->orderBy('delivery_date', 'asc')
+        ->with('deliveries');
 
-        return view('chauffeur.planning', compact('deliveryRoutes'));
+    // Le nom du paramètre 'delivery_date' correspond au nom de l'input dans la vue. C'est correct.
+    if ($request->has('delivery_date')) {
+        $query->whereDate('delivery_date', $request->input('delivery_date'));
     }
+
+    if ($request->has('status')) {
+        $query->where('status', $request->input('status'));
+    }
+
+    $deliveryRoutes = $query->get();
+
+    return view('chauffeur.planning', compact('deliveryRoutes'));
+}
 }

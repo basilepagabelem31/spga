@@ -8,6 +8,37 @@
         <i class="fas fa-calendar-alt me-2 text-primary"></i> Mon Planning
     </h1>
 
+    {{-- Formulaire de filtres de recherche --}}
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body">
+            <form action="{{ route('chauffeur.planning') }}" method="GET" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="filter_status" class="form-label">Statut</label>
+                    <select name="status" id="filter_status" class="form-select">
+                        <option value="">Tous les statuts</option>
+                        <option value="Planifiée" {{ request('status') === 'Planifiée' ? 'selected' : '' }}>Planifiée</option>
+                        <option value="En cours" {{ request('status') === 'En cours' ? 'selected' : '' }}>En cours</option>
+                        <option value="Terminée" {{ request('status') === 'Terminée' ? 'selected' : '' }}>Terminée</option>
+                        <option value="Annulée" {{ request('status') === 'Annulée' ? 'selected' : '' }}>Annulée</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="filter_date" class="form-label">Date de la tournée</label>
+                    <input type="date" name="delivery_date" id="filter_date" class="form-control" value="{{ request('delivery_date') }}">
+                </div>
+                <div class="col-md-4 d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-filter me-1"></i> Filtrer
+                    </button>
+                    <a href="{{ route('chauffeur.planning') }}" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i> Réinitialiser
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Votre tableau des tournées --}}
     <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
         <div class="card-body p-0">
             <div class="table-responsive">
