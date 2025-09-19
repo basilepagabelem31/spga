@@ -6,18 +6,21 @@ use App\Models\NonConformity;
 use App\Models\Product;
 use App\Models\QualityControl;
 use App\Models\User;
-use App\Models\Notification; // N'oubliez pas d'importer la classe Notification
+use App\Models\Notification;
+use App\Traits\LogsActivity; // Ajout de l'importation du trait
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class NonConformityController extends Controller
 {
+    use LogsActivity; // Utilisation du trait pour le logging
+
     /**
      * Affiche la liste des non-conformités.
      */
     public function index()
     {
-        $nonConformities = NonConformity::with(['product', 'qualityControl', 'decisionTakenBy'])->paginate(10);
+        $nonConformities = NonConformity::with(['product', 'qualityControl', 'decisionTakenBy'])->paginate(8);
         $products = Product::all();
         $qualityControls = QualityControl::all();
         $decisionMakers = User::whereHas('role', function ($query) {
@@ -55,17 +58,23 @@ class NonConformityController extends Controller
         ]);
 
         $nonConformity = NonConformity::create($request->all());
-
-        // Récupérer le produit associé pour les partenaires
         $product = Product::find($request->product_id);
+
+        // Log de la création
+        $this->recordLog(
+            'creation_non_conformite',
+            'non_conformities',
+            $nonConformity->id,
+            null,
+            $nonConformity->toArray()
+        );
 
         // Récupérer les utilisateurs à notifier
         $decisionMakers = User::whereHas('role', function ($query) {
             $query->whereIn('name', ['admin_principal', 'superviseur_production']);
         })->get();
 
-        // Récupérer les partenaires associés au produit (en supposant une relation 'partners' sur le modèle Product)
-        // Note: Assurez-vous que votre modèle Product a bien une relation 'partners' ou une relation similaire.
+        // Récupérer les partenaires associés au produit
         $partners = $product->partners; // Exemple : $product->partners
 
         // Fusionner les collections d'utilisateurs
@@ -118,6 +127,7 @@ class NonConformityController extends Controller
      */
     public function update(Request $request, NonConformity $nonConformity)
     {
+        $oldValues = $nonConformity->toArray(); // Capture des valeurs avant la mise à jour
         $oldStatus = $nonConformity->status;
 
         $request->validate([
@@ -130,10 +140,20 @@ class NonConformityController extends Controller
         ]);
 
         $nonConformity->update($request->all());
+        $newValues = $nonConformity->refresh()->toArray(); // Capture des nouvelles valeurs
+
+        // Log de la mise à jour
+        $this->recordLog(
+            'mise_a_jour_non_conformite',
+            'non_conformities',
+            $nonConformity->id,
+            $oldValues,
+            $newValues
+        );
 
         // Envoyer une notification si le statut change vers une décision finale
         if ($oldStatus === 'en attente de décision' && in_array($nonConformity->status, ['rejeté', 'reconditionné'])) {
-            $creator = User::find($nonConformity->qualityControl->user_id); // Supposons que le créateur est l'utilisateur du contrôle qualité
+            $creator = User::find($nonConformity->qualityControl->user_id);
 
             if ($creator) {
                 Notification::create([
@@ -153,7 +173,19 @@ class NonConformityController extends Controller
      */
     public function destroy(NonConformity $nonConformity)
     {
+        $oldValues = $nonConformity->toArray(); // Capture des valeurs avant la suppression
+        $nonConformityId = $nonConformity->id;
+
         $nonConformity->delete();
+
+        // Log de la suppression
+        $this->recordLog(
+            'suppression_non_conformite',
+            'non_conformities',
+            $nonConformityId,
+            $oldValues,
+            null
+        );
 
         return redirect()->route('non_conformities.index')
             ->with('success', 'Non-conformité supprimée avec succès.');

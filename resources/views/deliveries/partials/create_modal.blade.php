@@ -34,7 +34,10 @@
                             <option value="Annulée">Annulée</option>
                         </select>
                     </div>
-                    
+                    <div class="mb-3">
+                        <label for="create_delivered_at" class="form-label">Date de livraison (facultatif)</label>
+                        <input type="datetime-local" class="form-control rounded-pill" id="create_delivered_at" name="delivered_at">
+                    </div>
                     <div class="mb-3">
                         <label for="create_notes" class="form-label">Notes (facultatif)</label>
                         <textarea class="form-control rounded-4" id="create_notes" name="notes" rows="3"></textarea>

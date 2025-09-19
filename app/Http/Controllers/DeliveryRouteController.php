@@ -5,11 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\DeliveryRoute;
 use App\Models\User; // Pour le chauffeur
 use App\Notifications\DeliveryRouteAssigned;
+use App\Traits\LogsActivity; // Ajout de l'importation du trait
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log; // Ajouté pour le débogage si nécessaire
 
 class DeliveryRouteController extends Controller
 {
+    use LogsActivity; // Utilisation du trait pour le logging
+
     /**
      * Affiche la liste des tournées de livraison avec filtrage.
      */
@@ -36,7 +40,7 @@ class DeliveryRouteController extends Controller
                 });
             })
             ->orderBy('delivery_date', 'desc')
-            ->paginate(10)
+            ->paginate(8)
             ->withQueryString();
 
         return view('delivery_routes.index', compact('deliveryRoutes', 'drivers'));
@@ -56,6 +60,15 @@ class DeliveryRouteController extends Controller
         ]);
 
         $deliveryRoute = DeliveryRoute::create($request->all());
+
+        // Log de la création
+        $this->recordLog(
+            'creation_tournee_livraison',
+            'delivery_routes',
+            $deliveryRoute->id,
+            null,
+            $deliveryRoute->toArray()
+        );
 
         $driver = User::find($request->driver_id);
         if ($driver) {
@@ -80,6 +93,7 @@ class DeliveryRouteController extends Controller
      */
     public function update(Request $request, DeliveryRoute $deliveryRoute)
     {
+        $oldValues = $deliveryRoute->toArray(); // Capture des valeurs avant la mise à jour
         $oldStatus = $deliveryRoute->status;
 
         $request->validate([
@@ -91,6 +105,17 @@ class DeliveryRouteController extends Controller
         ]);
 
         $deliveryRoute->update($request->all());
+
+        $newValues = $deliveryRoute->refresh()->toArray(); // Capture des nouvelles valeurs
+        
+        // Log de la mise à jour
+        $this->recordLog(
+            'mise_a_jour_tournee_livraison',
+            'delivery_routes',
+            $deliveryRoute->id,
+            $oldValues,
+            $newValues
+        );
 
         if ($oldStatus === 'Planifiée' && $deliveryRoute->status === 'En cours') {
             $driver = $deliveryRoute->driver;
@@ -112,7 +137,20 @@ class DeliveryRouteController extends Controller
             return redirect()->route('delivery_routes.index')
                              ->with('error', 'Impossible de supprimer cette tournée car elle contient des livraisons.');
         }
+
+        $oldValues = $deliveryRoute->toArray(); // Capture des valeurs avant la suppression
+        $deliveryRouteId = $deliveryRoute->id;
+
         $deliveryRoute->delete();
+
+        // Log de la suppression
+        $this->recordLog(
+            'suppression_tournee_livraison',
+            'delivery_routes',
+            $deliveryRouteId,
+            $oldValues,
+            null
+        );
 
         return redirect()->route('delivery_routes.index')
                          ->with('success', 'Tournée de livraison supprimée avec succès.');

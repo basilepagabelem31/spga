@@ -359,7 +359,7 @@
     </div>
 
     <div class="d-flex justify-content-center mt-4">
-        {{ $stocks->links() }}
+        {{ $stocks->links('vendor.pagination.bootstrap-5') }}
     </div>
 </div>
 

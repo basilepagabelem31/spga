@@ -60,7 +60,7 @@
     </div>
 
     <div class="d-flex justify-content-center mt-4">
-        {{ $products->appends(request()->input())->links() }}
+        {{ $products->appends(request()->input())->links('vendor.pagination.bootstrap-5') }}
     </div>
 </div>
 

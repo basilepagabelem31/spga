@@ -240,7 +240,7 @@
     </div>
 
     <div class="d-flex justify-content-center mt-4">
-        {{ $permissions->links() }}
+        {{ $permissions->links('vendor.pagination.bootstrap-5') }}
     </div>
 </div>
 

@@ -95,7 +95,7 @@
     </div>
 
     <div class="d-flex justify-content-center mt-4">
-        {{ $nonConformities->links() }}
+        {{ $nonConformities->links('vendor.pagination.bootstrap-5') }}
     </div>
 </div>
 

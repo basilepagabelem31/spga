@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Delivery;
 use App\Models\DeliveryRoute;
 use App\Services\StockService;
+use App\Traits\LogsActivity;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Log;
 
 class ChauffeurController extends Controller
 {
+    use LogsActivity;
+
     protected $stockService;
 
     public function __construct(StockService $stockService)
@@ -24,147 +27,202 @@ class ChauffeurController extends Controller
     /**
      * Affiche le tableau de bord du chauffeur.
      */
-public function index()
-{
-    $driverId = Auth::id();
-    $today = Carbon::today();
+    public function index()
+    {
+        $driverId = Auth::id();
+        $today = Carbon::today();
 
-    // Récupérer toutes les livraisons du chauffeur pour aujourd'hui
-    $deliveries = Delivery::whereHas('deliveryRoute', function ($q) use ($driverId, $today) {
-            $q->where('driver_id', $driverId)
-              ->whereDate('delivery_date', $today);
-        })
-        ->with('order.client')
-        ->get();
+        $this->recordLog(
+            'acces_tableau_de_bord_chauffeur',
+            null,
+            null,
+            ['driver_id' => $driverId],
+            null
+        );
 
-    $totalDeliveries = $deliveries->count();
-    $completedDeliveries = $deliveries->where('status', 'Terminée')->count();
-    $pendingDeliveries = $deliveries->whereNotIn('status', ['Terminée', 'Annulée'])->count();
+        $deliveries = Delivery::whereHas('deliveryRoute', function ($q) use ($driverId, $today) {
+                $q->where('driver_id', $driverId)
+                  ->whereDate('delivery_date', $today);
+            })
+            ->with('order.client')
+            ->get();
 
-    // Prochaine livraison (triée par heure planifiée si dispo)
-    $nextDelivery = $deliveries->whereNotIn('status', ['Terminée', 'Annulée'])
-                               ->sortBy('planned_delivery_time')
-                               ->first();
+        $totalDeliveries = $deliveries->count();
+        $completedDeliveries = $deliveries->where('status', 'Terminée')->count();
+        $pendingDeliveries = $deliveries->whereNotIn('status', ['Terminée', 'Annulée'])->count();
 
-    return view('chauffeur.dashboard', compact(
-        'deliveries',
-        'totalDeliveries',
-        'completedDeliveries',
-        'pendingDeliveries',
-        'nextDelivery'
-    ));
-}
+        $nextDelivery = $deliveries->whereNotIn('status', ['Terminée', 'Annulée'])
+                                   ->sortBy('planned_delivery_time')
+                                   ->first();
 
+        return view('chauffeur.dashboard', compact(
+            'deliveries',
+            'totalDeliveries',
+            'completedDeliveries',
+            'pendingDeliveries',
+            'nextDelivery'
+        ));
+    }
 
-
-    /* Affiche la liste complète des livraisons du chauffeur avec filtres.
+    /**
+     * Affiche la liste complète des livraisons du chauffeur avec filtres.
      */
-// Fichier: ChauffeurController.php
+    public function deliveries(Request $request)
+    {
+        $driverId = Auth::id();
 
-public function deliveries(Request $request)
-{
-    $driverId = Auth::id();
-    $query = Delivery::query();
+        $this->recordLog(
+            'acces_liste_livraisons_chauffeur',
+            null,
+            null,
+            ['driver_id' => $driverId, 'filters' => $request->all()],
+            null
+        );
 
-    $query->whereHas('deliveryRoute', function ($q) use ($driverId) {
-        $q->where('driver_id', $driverId);
-    })->with('order.client');
+        $query = Delivery::query();
 
-    if ($request->has('route_id')) {
-        $query->where('delivery_route_id', $request->input('route_id'));
+        // On s'assure que seules les livraisons du chauffeur connecté sont affichées
+        $query->whereHas('deliveryRoute', function ($q) use ($driverId) {
+            $q->where('driver_id', $driverId);
+        })->with('order.client', 'deliveryRoute'); // On charge la relation deliveryRoute
+
+        // Filtre par statut (inchangé)
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        // CORRECTION : Le filtre de date pour les LIVRAISONS se fait sur la date de livraison effective (delivered_at)
+        if ($request->filled('delivered_at')) {
+            $query->whereDate('delivered_at', $request->input('delivered_at'));
+        }
+
+        $deliveries = $query->orderBy('created_at', 'desc')
+            ->paginate(3)
+            ->withQueryString();
+
+        return view('chauffeur.deliveries', compact('deliveries'));
     }
 
-    if ($request->has('status')) {
-        $query->where('status', $request->input('status'));
-    }
-
-    // Le filtre de date doit chercher le nom 'date' qui vient de la vue.
-    if ($request->has('date') && $request->input('date')) {
-        $query->whereHas('order', function ($q) use ($request) {
-            $q->whereDate('desired_delivery_date', $request->input('date'));
-        });
-    }
-
-    $deliveries = $query->orderBy('created_at', 'desc')
-        ->paginate(10)
-        ->withQueryString();
-
-    return view('chauffeur.deliveries', compact('deliveries'));
-}
-
+    /**
+     * Marque une livraison comme terminée.
+     */
     public function completeDelivery(Delivery $delivery)
     {
+        $driverId = Auth::id();
+        
         if ($delivery->status === 'Terminée') {
+            $this->recordLog(
+                'echec_mise_a_jour_livraison',
+                'deliveries',
+                $delivery->id,
+                ['error' => 'Livraison déjà terminée', 'driver_id' => $driverId],
+                null
+            );
             return redirect()->back()->with('info', 'Cette livraison est déjà terminée. Aucune action n\'est requise.');
         }
 
-        if ($delivery->deliveryRoute->driver_id !== Auth::id()) {
+        if ($delivery->deliveryRoute->driver_id !== $driverId) {
+            $this->recordLog(
+                'echec_mise_a_jour_livraison',
+                'deliveries',
+                $delivery->id,
+                ['error' => 'Accès non autorisé', 'driver_id' => $driverId],
+                null
+            );
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à modifier cette livraison.');
         }
 
         try {
             DB::beginTransaction();
 
-            // Le modèle se chargera de déduire le stock automatiquement
+            $oldStatus = $delivery->status;
+            $oldDeliveredAt = $delivery->delivered_at;
+
             $delivery->status = 'Terminée';
             $delivery->delivered_at = Carbon::now();
             $delivery->save();
 
-            // Mise à jour de la commande (statut uniquement)
             $order = $delivery->order;
             if ($order && $order->status !== 'Terminée') {
                 $order->status = 'Terminée';
                 $order->save();
 
-                    // Déduire le stock + notifier
                 $order->load('orderItems.product', 'client');
                 $this->stockService->deductStockForOrder($order);
                 $this->stockService->notifySuppliers($order);
             }
 
-            // Mise à jour de la tournée
             $deliveryRoute = $delivery->deliveryRoute;
             if ($deliveryRoute) {
-                if ($deliveryRoute->status === 'Planifiée') {
-                    $deliveryRoute->update(['status' => 'En cours']);
+                if ($deliveryRoute->status === 'planifiée') {
+                    $deliveryRoute->update(['status' => 'en_cours']);
                 }
 
                 $remaining = $deliveryRoute->deliveries()->whereNotIn('status', ['Terminée', 'Annulée'])->count();
                 if ($remaining === 0) {
-                    $deliveryRoute->update(['status' => 'Terminée']);
+                    $deliveryRoute->update(['status' => 'terminée']);
                 }
             }
 
             DB::commit();
+
+            $this->recordLog(
+                'mise_a_jour_livraison',
+                'deliveries',
+                $delivery->id,
+                ['old_status' => $oldStatus, 'old_delivered_at' => $oldDeliveredAt],
+                ['new_status' => $delivery->status, 'new_delivered_at' => $delivery->delivered_at]
+            );
 
             return redirect()->back()->with('success', 'Livraison marquée comme terminée.');
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors de la mise à jour du statut de livraison: ' . $e->getMessage());
+            
+            $this->recordLog(
+                'echec_mise_a_jour_livraison',
+                'deliveries',
+                $delivery->id,
+                ['error' => 'Erreur de base de données', 'exception' => $e->getMessage()],
+                null
+            );
             return redirect()->back()->with('error', 'Une erreur est survenue lors de la mise à jour de la livraison.');
         }
     }
 
-   public function planning(Request $request)
-{
-    $driverId = Auth::id();
-    
-    $query = DeliveryRoute::where('driver_id', $driverId)
-        ->orderBy('delivery_date', 'asc')
-        ->with('deliveries');
+    /**
+     * Affiche le planning des tournées du chauffeur.
+     */
+    public function planning(Request $request)
+    {
+        $driverId = Auth::id();
 
-    // Le nom du paramètre 'delivery_date' correspond au nom de l'input dans la vue. C'est correct.
-    if ($request->has('delivery_date')) {
-        $query->whereDate('delivery_date', $request->input('delivery_date'));
+        $this->recordLog(
+            'acces_planning_chauffeur',
+            'delivery_routes',
+            null,
+            ['driver_id' => $driverId, 'filters' => $request->all()],
+            null
+        );
+
+        $query = DeliveryRoute::where('driver_id', $driverId)
+            ->with('deliveries');
+
+        // Filtre par statut (inchangé)
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        // Le filtre de date pour le PLANNING se fait aussi sur la date de la TOURNEE (delivery_date)
+        if ($request->filled('delivery_date')) {
+            $query->whereDate('delivery_date', $request->input('delivery_date'));
+        }
+
+        $deliveryRoutes = $query->orderBy('delivery_date', 'asc')
+            ->paginate(4)
+            ->withQueryString();
+
+        return view('chauffeur.planning', compact('deliveryRoutes'));
     }
-
-    if ($request->has('status')) {
-        $query->where('status', $request->input('status'));
-    }
-
-    $deliveryRoutes = $query->get();
-
-    return view('chauffeur.planning', compact('deliveryRoutes'));
-}
 }

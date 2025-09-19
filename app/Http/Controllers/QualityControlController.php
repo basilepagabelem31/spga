@@ -3,32 +3,32 @@
 namespace App\Http\Controllers;
 
 use App\Models\QualityControl;
-use App\Models\User; // Pour le contrôleur
-use App\Models\Product; // Pour le produit
+use App\Models\User;
+use App\Models\Product;
+use App\Traits\LogsActivity; // Ajout de l'importation du trait
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log; // Ajouté pour le débogage si nécessaire
 
 class QualityControlController extends Controller
 {
+    use LogsActivity; // Utilisation du trait pour le logging
+
     /**
      * Affiche la liste des contrôles qualité.
      */
     public function index()
-{
-    // Chargement des contrôles qualité avec les relations pour l'affichage
-    $qualityControls = QualityControl::with(['controller', 'product'])->paginate(10);
+    {
+        $qualityControls = QualityControl::with(['controller', 'product'])->paginate(8);
 
-    // Récupération des données nécessaires pour les modales
-    // Assurez-vous que le rôle 'superviseur_production' existe
-    $controllers = User::whereHas('role', function ($query) {
-        $query->where('name', 'superviseur_production');
-    })->get();
-    
-    $products = Product::all();
+        $controllers = User::whereHas('role', function ($query) {
+            $query->where('name', 'superviseur_production');
+        })->get();
+        
+        $products = Product::all();
 
-    // On passe toutes les variables à la vue
-    return view('quality_controls.index', compact('qualityControls', 'controllers', 'products'));
-}
+        return view('quality_controls.index', compact('qualityControls', 'controllers', 'products'));
+    }
 
     /**
      * Affiche le formulaire de création d'un nouveau contrôle qualité.
@@ -36,7 +36,6 @@ class QualityControlController extends Controller
     public function create()
     {
         $controllers = User::whereHas('role', function ($query) {
-            // Filtrer par rôle approprié, ex: superviseur_production ou autre rôle dédié au QC
             $query->where('name', 'superviseur_production');
         })->get();
         $products = Product::all();
@@ -62,7 +61,16 @@ class QualityControlController extends Controller
             'responsible_signature_qc' => 'nullable|string',
         ]);
 
-        QualityControl::create($request->all());
+        $qualityControl = QualityControl::create($request->all());
+
+        // Log de la création
+        $this->recordLog(
+            'creation_controle_qualite',
+            'quality_controls',
+            $qualityControl->id,
+            null,
+            $qualityControl->toArray()
+        );
 
         return redirect()->route('quality_controls.index')
                          ->with('success', 'Contrôle qualité créé avec succès.');
@@ -94,6 +102,8 @@ class QualityControlController extends Controller
      */
     public function update(Request $request, QualityControl $qualityControl)
     {
+        $oldValues = $qualityControl->toArray(); // Capture des valeurs avant la mise à jour
+
         $request->validate([
             'control_date' => 'required|date',
             'controller_id' => 'required|exists:users,id',
@@ -109,6 +119,16 @@ class QualityControlController extends Controller
         ]);
 
         $qualityControl->update($request->all());
+        $newValues = $qualityControl->refresh()->toArray(); // Capture des nouvelles valeurs
+
+        // Log de la mise à jour
+        $this->recordLog(
+            'mise_a_jour_controle_qualite',
+            'quality_controls',
+            $qualityControl->id,
+            $oldValues,
+            $newValues
+        );
 
         return redirect()->route('quality_controls.index')
                          ->with('success', 'Contrôle qualité mis à jour avec succès.');
@@ -119,12 +139,32 @@ class QualityControlController extends Controller
      */
     public function destroy(QualityControl $qualityControl)
     {
+        $oldValues = $qualityControl->toArray(); // Capture des valeurs avant la suppression
+        $controlId = $qualityControl->id;
+
         if ($qualityControl->nonConformities()->count() > 0) {
+            // Log de l'échec de la suppression
+            $this->recordLog(
+                'echec_suppression_controle_qualite',
+                'quality_controls',
+                $controlId,
+                ['error' => 'Contrôle qualité lié à des non-conformités'],
+                null
+            );
             return redirect()->route('quality_controls.index')
                              ->with('error', 'Impossible de supprimer ce contrôle qualité car des non-conformités y sont liées.');
         }
 
         $qualityControl->delete();
+
+        // Log de la suppression
+        $this->recordLog(
+            'suppression_controle_qualite',
+            'quality_controls',
+            $controlId,
+            $oldValues,
+            null
+        );
 
         return redirect()->route('quality_controls.index')
                          ->with('success', 'Contrôle qualité supprimé avec succès.');

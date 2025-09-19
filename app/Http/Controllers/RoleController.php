@@ -3,21 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Models\Role;
-use App\Models\User; // Pour vérifier les utilisateurs associés lors de la suppression
-use App\Models\Permission; // Pour vérifier les permissions associées lors de la suppression
+use App\Models\User;
+use App\Models\Permission;
+use App\Traits\LogsActivity; // Ajout de l'importation du trait
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log; // Ajouté pour le débogage si nécessaire
 
 class RoleController extends Controller
 {
+    use LogsActivity; // Utilisation du trait pour le logging
+
     /**
      * Affiche la liste des rôles avec des options de filtrage et de recherche.
      */
     public function index(Request $request)
     {
-        $query = Role::query(); // Démarre une nouvelle requête Eloquent
+        $query = Role::query();
 
-        // Recherche par nom ou description
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -26,7 +29,7 @@ class RoleController extends Controller
             });
         }
 
-        $roles = $query->paginate(10)->withQueryString();
+        $roles = $query->paginate(8)->withQueryString();
         
         return view('roles.index', compact('roles'));
     }
@@ -49,7 +52,16 @@ class RoleController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        Role::create($request->all());
+        $role = Role::create($request->all());
+
+        // Log de la création
+        $this->recordLog(
+            'creation_role',
+            'roles',
+            $role->id,
+            null,
+            $role->toArray()
+        );
 
         return redirect()->route('roles.index')
                          ->with('success', 'Rôle créé avec succès.');
@@ -76,12 +88,24 @@ class RoleController extends Controller
      */
     public function update(Request $request, Role $role)
     {
+        $oldValues = $role->toArray(); // Capture des valeurs avant la mise à jour
+
         $request->validate([
             'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
             'description' => 'nullable|string',
         ]);
 
         $role->update($request->all());
+        $newValues = $role->refresh()->toArray(); // Capture des nouvelles valeurs
+
+        // Log de la mise à jour
+        $this->recordLog(
+            'mise_a_jour_role',
+            'roles',
+            $role->id,
+            $oldValues,
+            $newValues
+        );
 
         return redirect()->route('roles.index')
                          ->with('success', 'Rôle mis à jour avec succès.');
@@ -92,21 +116,51 @@ class RoleController extends Controller
      */
     public function destroy(Role $role)
     {
+        $oldValues = $role->toArray(); // Capture des valeurs avant la suppression
+        $roleId = $role->id;
+
         try {
-            // Vérifier si des utilisateurs sont associés à ce rôle
             if ($role->users()->count() > 0) {
+                $this->recordLog(
+                    'echec_suppression_role',
+                    'roles',
+                    $roleId,
+                    ['error' => 'Le rôle est associé à des utilisateurs'],
+                    null
+                );
                 return redirect()->route('roles.index')->with('error', 'Impossible de supprimer ce rôle car il est associé à des utilisateurs.');
             }
 
-            // Vérifier si des permissions sont associées à ce rôle
             if ($role->permissions()->count() > 0) {
+                $this->recordLog(
+                    'echec_suppression_role',
+                    'roles',
+                    $roleId,
+                    ['error' => 'Le rôle est associé à des permissions'],
+                    null
+                );
                 return redirect()->route('roles.index')->with('error', 'Impossible de supprimer ce rôle car il est associé à des permissions.');
             }
 
             $role->delete();
+
+            $this->recordLog(
+                'suppression_role',
+                'roles',
+                $roleId,
+                $oldValues,
+                null
+            );
+
             return redirect()->route('roles.index')->with('success', 'Rôle supprimé avec succès !');
         } catch (\Illuminate\Database\QueryException $e) {
-            // Gérer les erreurs de base de données génériques
+            $this->recordLog(
+                'echec_suppression_role',
+                'roles',
+                $roleId,
+                ['error' => 'Erreur de base de données', 'exception' => $e->getMessage()],
+                null
+            );
             return redirect()->route('roles.index')->with('error', 'Une erreur est survenue lors de la suppression du rôle.');
         }
     }

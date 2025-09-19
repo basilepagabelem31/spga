@@ -9,7 +9,7 @@
                 @csrf
                 <div class="modal-body pt-0">
                     <div class="mb-3">
-                        <label for="delivery_date" class="form-label">Date de livraison</label>
+                        <label for="delivery_date" class="form-label">Date de la Tournée</label>
                         <input type="date" class="form-control rounded-pill" id="delivery_date" name="delivery_date" required>
                     </div>
                     <div class="mb-3">

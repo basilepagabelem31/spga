@@ -3,19 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductionFollowUp;
+use App\Traits\LogsActivity; // Ajout de l'importation du trait
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log; // Ajouté pour le débogage si nécessaire
 
 class ProductionFollowUpController extends Controller
 {
+    use LogsActivity; // Utilisation du trait pour le logging
+
     /**
      * Affiche la liste des suivis de production.
      */
-   public function index(Request $request)
+    public function index(Request $request)
     {
         $query = ProductionFollowUp::query();
 
-        // Recherche par site de production, nom du producteur ou nom de la culture
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -25,20 +28,17 @@ class ProductionFollowUpController extends Controller
             });
         }
         
-        // Filtrage par type de production
         if ($request->filled('production_type')) {
             $query->where('production_type', $request->production_type);
         }
 
-        $productionFollowUps = $query->paginate(10)->withQueryString();
+        $productionFollowUps = $query->paginate(8)->withQueryString();
         
-        // Récupérer la liste unique des types de production pour le filtre
         $productionTypes = ProductionFollowUp::select('production_type')->distinct()->get();
 
         return view('production_follow_ups.index', compact('productionFollowUps', 'productionTypes'));
     }
     
-
     /**
      * Affiche le formulaire de création d'un nouveau suivi de production.
      */
@@ -71,7 +71,16 @@ class ProductionFollowUpController extends Controller
             'responsible_signature' => 'nullable|string',
         ]);
 
-        ProductionFollowUp::create($request->all());
+        $productionFollowUp = ProductionFollowUp::create($request->all());
+
+        // Log de la création
+        $this->recordLog(
+            'creation_suivi_production',
+            'production_follow_ups',
+            $productionFollowUp->id,
+            null,
+            $productionFollowUp->toArray()
+        );
 
         return redirect()->route('production_follow_ups.index')
                          ->with('success', 'Suivi de production créé avec succès.');
@@ -99,6 +108,8 @@ class ProductionFollowUpController extends Controller
      */
     public function update(Request $request, ProductionFollowUp $productionFollowUp)
     {
+        $oldValues = $productionFollowUp->toArray(); // Capture des valeurs avant la mise à jour
+
         $request->validate([
             'production_site' => 'required|string|max:255',
             'commune' => 'nullable|string|max:255',
@@ -119,6 +130,16 @@ class ProductionFollowUpController extends Controller
         ]);
 
         $productionFollowUp->update($request->all());
+        $newValues = $productionFollowUp->refresh()->toArray(); // Capture des nouvelles valeurs
+
+        // Log de la mise à jour
+        $this->recordLog(
+            'mise_a_jour_suivi_production',
+            'production_follow_ups',
+            $productionFollowUp->id,
+            $oldValues,
+            $newValues
+        );
 
         return redirect()->route('production_follow_ups.index')
                          ->with('success', 'Suivi de production mis à jour avec succès.');
@@ -129,12 +150,32 @@ class ProductionFollowUpController extends Controller
      */
     public function destroy(ProductionFollowUp $productionFollowUp)
     {
+        $oldValues = $productionFollowUp->toArray(); // Capture des valeurs avant la suppression
+        $followUpId = $productionFollowUp->id;
+
         if ($productionFollowUp->estimatedHarvestDates()->count() > 0) {
+            // Log de l'échec de la suppression
+            $this->recordLog(
+                'echec_suppression_suivi_production',
+                'production_follow_ups',
+                $followUpId,
+                ['error' => 'Le suivi a des dates de récolte estimées'],
+                null
+            );
             return redirect()->route('production_follow_ups.index')
                              ->with('error', 'Impossible de supprimer ce suivi car il a des dates de récolte estimées.');
         }
 
         $productionFollowUp->delete();
+
+        // Log de la suppression
+        $this->recordLog(
+            'suppression_suivi_production',
+            'production_follow_ups',
+            $followUpId,
+            $oldValues,
+            null
+        );
 
         return redirect()->route('production_follow_ups.index')
                          ->with('success', 'Suivi de production supprimé avec succès.');

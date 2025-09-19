@@ -8,7 +8,7 @@ use App\Models\Product;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Auth; // <-- L'importation correcte
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -50,7 +50,7 @@ class OrderController extends Controller
             $query->whereDate('order_date', '<=', $request->order_date_to);
         }
 
-        $orders = $query->paginate(10)->withQueryString();
+        $orders = $query->paginate(8)->withQueryString();
 
         $clients = User::whereHas('role', function ($query) {
             $query->where('name', 'client');
@@ -58,7 +58,7 @@ class OrderController extends Controller
 
         $statuses = ['En attente de validation', 'Validée', 'En préparation', 'En livraison', 'Terminée', 'Annulée'];
 
-        $products = Product::available()->get(); 
+        $products = Product::available()->get();
         
         $validators = User::whereHas('role', function ($query) {
             $query->whereIn('name', ['admin_principal', 'superviseur_commercial']);
@@ -85,21 +85,21 @@ class OrderController extends Controller
             'products' => 'required|array|min:1',
             'products.*.id' => 'required|exists:products,id',
             'products.*.quantity' => 'required|numeric|min:0.01',
-        ] ,
+        ],
         [
-        'desired_delivery_date.required' => 'Le champ "Date de livraison souhaitée" est requis.',
-        'delivery_location.required' => 'Le champ "Lieu de livraison" est requis.',
-        'geolocation.required' => 'Le champ "Géolocalisation" est requis.',
-        'client_id.required' => 'Le champ "Client" est requis.',
-        'delivery_mode.required' => 'Le champ "Mode de livraison" est requis.',
-        'payment_mode.required' => 'Le champ "Mode de paiement" est requis.',
-        'status.required' => 'Le champ "Statut" est requis.',
-        'products.required' => 'Vous devez ajouter au moins un article à la commande.',
-        'products.*.id.required' => 'Le produit est requis pour chaque article de la commande.',
-        'products.*.quantity.required' => 'La quantité est requise pour chaque article de la commande.',
-        'products.*.quantity.min' => 'La quantité pour chaque produit doit être d\'au moins :min.',
-    ]);
-    
+            'desired_delivery_date.required' => 'Le champ "Date de livraison souhaitée" est requis.',
+            'delivery_location.required' => 'Le champ "Lieu de livraison" est requis.',
+            'geolocation.required' => 'Le champ "Géolocalisation" est requis.',
+            'client_id.required' => 'Le champ "Client" est requis.',
+            'delivery_mode.required' => 'Le champ "Mode de livraison" est requis.',
+            'payment_mode.required' => 'Le champ "Mode de paiement" est requis.',
+            'status.required' => 'Le champ "Statut" est requis.',
+            'products.required' => 'Vous devez ajouter au moins un article à la commande.',
+            'products.*.id.required' => 'Le produit est requis pour chaque article de la commande.',
+            'products.*.quantity.required' => 'La quantité est requise pour chaque article de la commande.',
+            'products.*.quantity.min' => 'La quantité pour chaque produit doit être d\'au moins :min.',
+        ]);
+        
 
         $errors = [];
         foreach ($request->products as $item) {
@@ -156,6 +156,15 @@ class OrderController extends Controller
 
             DB::commit();
 
+            // Enregistrement de l'action de création de commande
+            $this->recordLog(
+                'creation_commande',
+                'orders',
+                $order->id,
+                null,
+                $order->toArray()
+            );
+
             // ---------- NOTIFIER APRÈS COMMIT (si erreur de mail => pas de rollback) ----------
             try {
                 $order->load('orderItems.product', 'client');
@@ -180,6 +189,8 @@ class OrderController extends Controller
      */
     public function update(Request $request, Order $order)
     {
+        $old_order_data = $order->toArray(); // Capture des anciennes données
+
         $oldStatus = $order->status;
         $newStatus = $request->status;
 
@@ -198,20 +209,20 @@ class OrderController extends Controller
             'products' => 'required|array|min:1',
             'products.*.id' => 'required|exists:products,id',
             'products.*.quantity' => 'required|numeric|min:0.01',
-        ] , 
-    [
-        'desired_delivery_date.required' => 'Le champ "Date de livraison souhaitée" est requis.',
-        'delivery_location.required' => 'Le champ "Lieu de livraison" est requis.',
-        'geolocation.required' => 'Le champ "Géolocalisation" est requis.',
-        'client_id.required' => 'Le champ "Client" est requis.',
-        'delivery_mode.required' => 'Le champ "Mode de livraison" est requis.',
-        'payment_mode.required' => 'Le champ "Mode de paiement" est requis.',
-        'status.required' => 'Le champ "Statut" est requis.',
-        'products.required' => 'Vous devez ajouter au moins un article à la commande.',
-        'products.*.id.required' => 'Le produit est requis pour chaque article de la commande.',
-        'products.*.quantity.required' => 'La quantité est requise pour chaque article de la commande.',
-        'products.*.quantity.min' => 'La quantité pour chaque produit doit être d\'au moins :min.',
-    ]);
+        ],
+        [
+            'desired_delivery_date.required' => 'Le champ "Date de livraison souhaitée" est requis.',
+            'delivery_location.required' => 'Le champ "Lieu de livraison" est requis.',
+            'geolocation.required' => 'Le champ "Géolocalisation" est requis.',
+            'client_id.required' => 'Le champ "Client" est requis.',
+            'delivery_mode.required' => 'Le champ "Mode de livraison" est requis.',
+            'payment_mode.required' => 'Le champ "Mode de paiement" est requis.',
+            'status.required' => 'Le champ "Statut" est requis.',
+            'products.required' => 'Vous devez ajouter au moins un article à la commande.',
+            'products.*.id.required' => 'Le produit est requis pour chaque article de la commande.',
+            'products.*.quantity.required' => 'La quantité est requise pour chaque article de la commande.',
+            'products.*.quantity.min' => 'La quantité pour chaque produit doit être d\'au moins :min.',
+        ]);
 
         try {
             DB::beginTransaction();
@@ -228,19 +239,17 @@ class OrderController extends Controller
             }
 
             // Mettre à jour la commande (hors gestion du stock)
-           
             $order->update([
                 'desired_delivery_date' => $request->desired_delivery_date,
                 'delivery_location' => $request->delivery_location,
                 'geolocation' => $request->geolocation,
-                'delivery_mode' => $request->delivery_mode, // Ajoutez les champs nécessaires
+                'delivery_mode' => $request->delivery_mode,
                 'payment_mode' => $request->payment_mode,
                 'total_amount' => $totalAmount,
                 'status' => $newStatus,
                 'notes' => $request->notes,
                 'validated_by' => $request->validated_by,
-]);
-// ...
+            ]);
 
             $order->load('orderItems.product');
             Log::info("Order items count: " . $order->orderItems->count());
@@ -258,6 +267,16 @@ class OrderController extends Controller
 
             DB::commit();
 
+            // Enregistrement de l'action de mise à jour de commande
+            $new_order_data = $order->refresh()->toArray();
+            $this->recordLog(
+                'mise_a_jour_commande',
+                'orders',
+                $order->id,
+                $old_order_data,
+                $new_order_data
+            );
+            
             // Notifier APRÈS commit (toujours)
             try {
                 $order->load('orderItems.product', 'client');
@@ -281,6 +300,8 @@ class OrderController extends Controller
      */
     public function destroy(Order $order)
     {
+        $old_order_data = $order->toArray(); // Capture des données avant suppression
+
         try {
             DB::beginTransaction();
 
@@ -289,8 +310,18 @@ class OrderController extends Controller
                 $this->stockService->replenishStockForOrder($order);
             }
 
+            $order_id = $order->id; // Conserver l'ID avant la suppression
             $order->delete();
             DB::commit();
+
+            // Enregistrement de l'action de suppression de commande
+            $this->recordLog(
+                'suppression_commande',
+                'orders',
+                $order_id,
+                $old_order_data,
+                null
+            );
 
             return redirect()->route('orders.index')->with('success', 'Commande supprimée avec succès.');
         } catch (\Exception $e) {
@@ -301,12 +332,10 @@ class OrderController extends Controller
         }
     }
 
-
-
     public function validateOrder(Order $order)
     {
-
         $old_status = $order->status;
+        
         // 1. Vérifier si l'état de la commande permet la validation
         if ($order->status !== 'En attente de validation') {
             return back()->with('error', 'Cette commande ne peut pas être validée.');
@@ -319,20 +348,20 @@ class OrderController extends Controller
             $order->status = 'Validée';
             
             // 3. Assigner l'ID de l'utilisateur qui effectue l'action
-            $order->validated_by = Auth::id(); // Assurez-vous que cette colonne existe
+            $order->validated_by = Auth::id();
 
             $order->save();
 
             DB::commit();
 
-                    // Enregistrer l'action de log après la sauvegarde réussie
-        $this->recordLog(
-            'validation_commande',
-            'orders',
-            $order->id,
-            ['status' => $old_status],
-            ['status' => $order->status, 'validated_by' => $order->validated_by]
-        );
+            // Enregistrer l'action de log après la sauvegarde réussie
+            $this->recordLog(
+                'validation_commande',
+                'orders',
+                $order->id,
+                ['status' => $old_status, 'validated_by' => null],
+                ['status' => $order->status, 'validated_by' => $order->validated_by]
+            );
 
             return back()->with('success', 'La commande a été validée avec succès.');
 

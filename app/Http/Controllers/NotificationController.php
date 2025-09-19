@@ -23,7 +23,7 @@ class NotificationController extends Controller
             // $query->where('user_id', auth()->id());
         }
 
-        $notifications = $query->latest()->paginate(20);
+        $notifications = $query->latest()->paginate(8);
         return view('notifications.index', compact('notifications'));
     }
 

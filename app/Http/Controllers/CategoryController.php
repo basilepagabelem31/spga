@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Traits\LogsActivity;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log; // Ajouté pour le débogage si nécessaire
 
 class CategoryController extends Controller
 {
+    use LogsActivity; // Utilisation du trait pour le logging
+
     public function index(Request $request)
     {
         // Seules les catégories générales (provenance_id est null)
@@ -21,7 +25,7 @@ class CategoryController extends Controller
             });
         }
 
-        $categories = $query->paginate(10)->withQueryString();
+        $categories = $query->paginate(8)->withQueryString();
         
         return view('categories.index', compact('categories'));
     }
@@ -34,14 +38,22 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'name' => 'required|string|max:255|unique:categories,name,NULL,id,provenance_id,NULL', // Validation unique pour les catégories générales
+            'name' => 'required|string|max:255|unique:categories,name,NULL,id,provenance_id,NULL',
             'description' => 'nullable|string',
         ]);
 
-        // Assurez-vous que provenance_id est null pour les catégories d'admin
         $validatedData['provenance_id'] = null;
         
-        Category::create($validatedData);
+        $category = Category::create($validatedData);
+
+        // Ajout du log pour la création
+        $this->recordLog(
+            'creation_categorie',
+            'categories',
+            $category->id,
+            null,
+            $category->toArray()
+        );
 
         return redirect()->route('categories.index')
                          ->with('success', 'Catégorie créée avec succès.');
@@ -49,7 +61,6 @@ class CategoryController extends Controller
 
     public function edit(Category $category)
     {
-        // On s'assure qu'un admin ne peut éditer que les catégories générales
         if ($category->provenance_id !== null) {
             abort(403);
         }
@@ -58,10 +69,11 @@ class CategoryController extends Controller
 
     public function update(Request $request, Category $category)
     {
-        // On s'assure qu'un admin ne peut éditer que les catégories générales
         if ($category->provenance_id !== null) {
             abort(403);
         }
+
+        $oldValues = $category->toArray(); // Capture des valeurs avant la mise à jour
 
         $request->validate([
             'name' => [
@@ -75,28 +87,50 @@ class CategoryController extends Controller
 
         $category->update($request->all());
 
+        // Ajout du log pour la mise à jour
+        $newValues = $category->refresh()->toArray();
+        $this->recordLog(
+            'mise_a_jour_categorie',
+            'categories',
+            $category->id,
+            $oldValues,
+            $newValues
+        );
+
         return redirect()->route('categories.index')
                          ->with('success', 'Catégorie mise à jour avec succès.');
     }
     
     public function destroy(Category $category)
     {
-        // On s'assure qu'un admin ne peut supprimer que les catégories générales
         if ($category->provenance_id !== null) {
             abort(403);
         }
+
         if ($category->products()->count() > 0) {
             return redirect()->route('categories.index')
                              ->with('error', 'Impossible de supprimer cette catégorie car des produits y sont liés.');
         }
 
+        $oldValues = $category->toArray(); // Capture des valeurs avant la suppression
+        $categoryId = $category->id;
+
         $category->delete();
+
+        // Ajout du log pour la suppression
+        $this->recordLog(
+            'suppression_categorie',
+            'categories',
+            $categoryId,
+            $oldValues,
+            null
+        );
 
         return redirect()->route('categories.index')
                          ->with('success', 'Catégorie supprimée avec succès.');
     }
 
-     public function show(Category $category)
+    public function show(Category $category)
     {
         return view('categories.show', compact('category'));
     }

@@ -113,9 +113,17 @@ Route::middleware(['auth', 'role:admin_principal,superviseur_commercial,supervis
     Route::resource('notifications', NotificationController::class)->only(['index', 'show', 'destroy']);
     Route::post('notifications/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
 
-    Route::resource('activity-logs', ActivityLogController::class)->only(['index', 'show'])->parameters([
-        'activity-logs' => 'activityLog'
-    ]); 
+// Route pour afficher la liste (déjà existante)
+Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+// Route pour afficher les détails (déjà existante)
+Route::get('/activity-logs/{activityLog}', [ActivityLogController::class, 'show'])->name('activity-logs.show');
+
+
+// Nouvelle route pour la suppression de tous les logs
+Route::delete('/activity-logs/clear-all', [ActivityLogController::class, 'clearAll'])->name('activity-logs.clearAll');
+
+// Nouvelle route pour la suppression d'un log unique
+Route::delete('/activity-logs/{activityLog}', [ActivityLogController::class, 'destroy'])->name('activity-logs.destroy');
 
     // Tables pivots
     Route::prefix('role-permissions')->name('role_has_permissions.')->group(function () {

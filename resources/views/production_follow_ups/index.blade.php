@@ -129,7 +129,7 @@
     </div>
 
     <div class="d-flex justify-content-center mt-4">
-        {{ $productionFollowUps->links() }}
+        {{ $productionFollowUps->links('vendor.pagination.bootstrap-5') }}
     </div>
 </div>
 

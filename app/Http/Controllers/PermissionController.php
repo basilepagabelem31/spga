@@ -3,20 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Permission;
+use App\Traits\LogsActivity; // Ajout de l'importation du trait
 use Illuminate\Http\Request;
 
 class PermissionController extends Controller
 {
+    use LogsActivity; // Utilisation du trait pour le logging
+
     /**
      * Affiche la liste des permissions avec des options de filtrage et de recherche.
      */
     public function index(Request $request)
     {
-        $query = Permission::query(); // Démarre une nouvelle requête Eloquent
+        $query = Permission::query();
 
-        // Recherche par nom ou description
-        // Si le paramètre 'search' est présent dans la requête HTTP,
-        // ajoute des conditions OR WHERE pour rechercher la chaîne dans ces colonnes.
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -25,11 +25,8 @@ class PermissionController extends Controller
             });
         }
 
-        // Exécute la requête, pagine les résultats (10 par page)
-        // et ajoute les paramètres de la requête actuelle à l'URL de pagination.
-        $permissions = $query->paginate(10)->withQueryString();
+        $permissions = $query->paginate(8)->withQueryString();
         
-        // Retourne la vue 'permissions.index' en passant les permissions paginées.
         return view('permissions.index', compact('permissions'));
     }
 
@@ -51,7 +48,16 @@ class PermissionController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        Permission::create($request->all());
+        $permission = Permission::create($request->all());
+
+        // Log de la création
+        $this->recordLog(
+            'creation_permission',
+            'permissions',
+            $permission->id,
+            null,
+            $permission->toArray()
+        );
 
         return redirect()->route('permissions.index')
                          ->with('success', 'Permission créée avec succès.');
@@ -78,12 +84,24 @@ class PermissionController extends Controller
      */
     public function update(Request $request, Permission $permission)
     {
+        $oldValues = $permission->toArray(); // Capture des valeurs avant la mise à jour
+
         $request->validate([
             'name' => 'required|string|max:255|unique:permissions,name,' . $permission->id,
             'description' => 'nullable|string',
         ]);
 
         $permission->update($request->all());
+        $newValues = $permission->refresh()->toArray(); // Capture des nouvelles valeurs
+
+        // Log de la mise à jour
+        $this->recordLog(
+            'mise_a_jour_permission',
+            'permissions',
+            $permission->id,
+            $oldValues,
+            $newValues
+        );
 
         return redirect()->route('permissions.index')
                          ->with('success', 'Permission mise à jour avec succès.');
@@ -98,7 +116,19 @@ class PermissionController extends Controller
         // Vous pouvez ajouter une logique ici si vous avez des contraintes de suppression.
         // Par exemple: if ($permission->roles()->count() > 0) { ... }
 
+        $oldValues = $permission->toArray(); // Capture des valeurs avant la suppression
+        $permissionId = $permission->id;
+
         $permission->delete();
+
+        // Log de la suppression
+        $this->recordLog(
+            'suppression_permission',
+            'permissions',
+            $permissionId,
+            $oldValues,
+            null
+        );
 
         return redirect()->route('permissions.index')
                          ->with('success', 'Permission supprimée avec succès.');

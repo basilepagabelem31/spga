@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\RoleHasPermission; // Assurez-vous que ce modèle existe (voir note ci-dessous)
+use App\Models\RoleHasPermission;
 use App\Models\Role;
 use App\Models\Permission;
+use App\Traits\LogsActivity; // Ajout de l'importation du trait
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log; // Ajouté pour le débogage si nécessaire
 
 class RoleHasPermissionController extends Controller
 {
+    use LogsActivity; // Utilisation du trait pour le logging
+
     /**
      * Affiche la liste des attributions rôle-permission avec des options de filtrage.
      */
@@ -16,19 +20,16 @@ class RoleHasPermissionController extends Controller
     {
         $query = RoleHasPermission::with(['role', 'permission']);
 
-        // Filtrer par rôle
         if ($request->filled('role_id')) {
             $query->where('role_id', $request->role_id);
         }
 
-        // Filtrer par permission
         if ($request->filled('permission_id')) {
             $query->where('permission_id', $request->permission_id);
         }
 
-        $roleHasPermissions = $query->paginate(10)->withQueryString();
+        $roleHasPermissions = $query->paginate(8)->withQueryString();
         
-        // Récupérer tous les rôles et permissions pour les menus déroulants de filtre et des modales
         $roles = Role::all();
         $permissions = Permission::all();
 
@@ -55,16 +56,32 @@ class RoleHasPermissionController extends Controller
             'permission_id' => 'required|exists:permissions,id',
         ]);
 
-        // Vérifier si l'attribution existe déjà
         $exists = RoleHasPermission::where('role_id', $request->role_id)
-                                  ->where('permission_id', $request->permission_id)
-                                  ->exists();
+                                 ->where('permission_id', $request->permission_id)
+                                 ->exists();
 
         if ($exists) {
+            // Log de l'échec de la création
+            $this->recordLog(
+                'echec_creation_attribution_role_permission',
+                'role_has_permissions',
+                null,
+                ['error' => 'Attribution déjà existante', 'role_id' => $request->role_id, 'permission_id' => $request->permission_id],
+                null
+            );
             return redirect()->back()->with('error', 'Cette attribution de permission à ce rôle existe déjà.');
         }
 
-        RoleHasPermission::create($request->all());
+        $assignment = RoleHasPermission::create($request->all());
+
+        // Log de la création
+        $this->recordLog(
+            'creation_attribution_role_permission',
+            'role_has_permissions',
+            $assignment->id,
+            null,
+            $assignment->toArray()
+        );
 
         return redirect()->route('role_has_permissions.index')
                          ->with('success', 'Permission attribuée au rôle avec succès.');
@@ -75,8 +92,6 @@ class RoleHasPermissionController extends Controller
      */
     public function show($role_id, $permission_id)
     {
-        // Pour une table pivot, la vue "show" est rarement utile.
-        // On redirige généralement vers la liste avec un message si besoin.
         $assignment = RoleHasPermission::where('role_id', $role_id)
                                        ->where('permission_id', $permission_id)
                                        ->first();
@@ -91,14 +106,49 @@ class RoleHasPermissionController extends Controller
      */
     public function destroy($role_id, $permission_id)
     {
-        $deleted = RoleHasPermission::where('role_id', $role_id)
-                                    ->where('permission_id', $permission_id)
-                                    ->delete();
+        $assignment = RoleHasPermission::where('role_id', $role_id)
+                                       ->where('permission_id', $permission_id)
+                                       ->first();
+
+        if (!$assignment) {
+            // Log de l'échec de la suppression
+            $this->recordLog(
+                'echec_suppression_attribution_role_permission',
+                'role_has_permissions',
+                null,
+                ['error' => 'Attribution non trouvée', 'role_id' => $role_id, 'permission_id' => $permission_id],
+                null
+            );
+            return redirect()->route('role_has_permissions.index')
+                             ->with('error', 'Attribution non trouvée ou impossible à supprimer.');
+        }
+
+        $oldValues = $assignment->toArray(); // Capture des valeurs avant la suppression
+        $assignmentId = $assignment->id;
+
+        $deleted = $assignment->delete();
 
         if ($deleted) {
+            // Log de la suppression
+            $this->recordLog(
+                'suppression_attribution_role_permission',
+                'role_has_permissions',
+                $assignmentId,
+                $oldValues,
+                null
+            );
             return redirect()->route('role_has_permissions.index')
                              ->with('success', 'Attribution de permission supprimée avec succès.');
         }
+
+        // Cas de figure improbable, mais pour la complétude
+        $this->recordLog(
+            'echec_suppression_attribution_role_permission',
+            'role_has_permissions',
+            $assignmentId,
+            ['error' => 'Erreur inconnue lors de la suppression'],
+            null
+        );
 
         return redirect()->route('role_has_permissions.index')
                          ->with('error', 'Attribution non trouvée ou impossible à supprimer.');

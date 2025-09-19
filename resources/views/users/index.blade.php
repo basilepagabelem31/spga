@@ -297,8 +297,7 @@
     </div>
 
     <div class="d-flex justify-content-center mt-4">
-        {{ $users->links() }}
-    </div>
+{{ $users->links('vendor.pagination.bootstrap-5') }}    </div>
 </div>
 
 {{-- Modale d'ajout d'utilisateur --}}

@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Contract;
 use App\Models\Partner;
+use App\Traits\LogsActivity; // Ajout de l'importation du trait
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage; // Importez le facade Storage
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ContractController extends Controller
 {
+    use LogsActivity; // Utilisation du trait pour le logging
+
     /**
      * Affiche la liste des contrats avec des options de filtrage et de recherche.
      */
@@ -54,7 +57,7 @@ class ContractController extends Controller
             $query->whereDate('end_date', '<=', $request->end_date_filter);
         }
 
-        $contracts = $query->paginate(10)->withQueryString();
+        $contracts = $query->paginate(8)->withQueryString();
         
         $partners = Partner::all();
 
@@ -78,19 +81,27 @@ class ContractController extends Controller
         $validatedData = $request->validate([
             'partner_id' => 'required|exists:partners,id',
             'title' => 'required|string|max:255',
-            'contract_file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:2048', // Validation pour le fichier
+            'contract_file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:2048',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'description' => 'nullable|string',
         ]);
 
-        // Gérer le téléchargement du fichier
         if ($request->hasFile('contract_file')) {
-            $filePath = $request->file('contract_file')->store('contracts', 'public'); // Stocke dans storage/app/public/contracts
+            $filePath = $request->file('contract_file')->store('contracts', 'public');
             $validatedData['file_path'] = $filePath;
         }
 
-        Contract::create($validatedData);
+        $contract = Contract::create($validatedData);
+
+        // Ajout du log pour la création du contrat
+        $this->recordLog(
+            'creation_contrat',
+            'contracts',
+            $contract->id,
+            null,
+            $contract->toArray()
+        );
 
         return redirect()->route('contracts.index')
                          ->with('success', 'Contrat créé avec succès.');
@@ -122,31 +133,41 @@ class ContractController extends Controller
         $validatedData = $request->validate([
             'partner_id' => 'required|exists:partners,id',
             'title' => 'required|string|max:255',
-            'contract_file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:2048', // Validation pour le fichier
+            'contract_file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:2048',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'description' => 'nullable|string',
         ]);
+        
+        $oldValues = $contract->toArray(); // Capture des valeurs avant la mise à jour
 
         // Gérer le remplacement du fichier
         if ($request->hasFile('contract_file')) {
-            // Supprimer l'ancien fichier si un nouveau est téléchargé
             if ($contract->file_path) {
                 Storage::disk('public')->delete($contract->file_path);
             }
             $filePath = $request->file('contract_file')->store('contracts', 'public');
             $validatedData['file_path'] = $filePath;
-        } elseif ($request->input('clear_file')) { // Si la case 'supprimer le fichier' est cochée
+        } elseif ($request->input('clear_file')) {
             if ($contract->file_path) {
                 Storage::disk('public')->delete($contract->file_path);
                 $validatedData['file_path'] = null;
             }
         } else {
-            // Conserver le chemin du fichier existant si aucun nouveau fichier n'est téléchargé et qu'il n'est pas effacé
             $validatedData['file_path'] = $contract->file_path;
         }
 
         $contract->update($validatedData);
+
+        // Ajout du log pour la mise à jour du contrat
+        $newValues = $contract->refresh()->toArray();
+        $this->recordLog(
+            'mise_a_jour_contrat',
+            'contracts',
+            $contract->id,
+            $oldValues,
+            $newValues
+        );
 
         return redirect()->route('contracts.index')
                          ->with('success', 'Contrat mis à jour avec succès.');
@@ -157,12 +178,24 @@ class ContractController extends Controller
      */
     public function destroy(Contract $contract)
     {
+        $oldValues = $contract->toArray(); // Capture des valeurs avant la suppression
+        $contractId = $contract->id;
+
         // Supprimer le fichier associé avant de supprimer le contrat
         if ($contract->file_path) {
             Storage::disk('public')->delete($contract->file_path);
         }
 
         $contract->delete();
+
+        // Ajout du log pour la suppression du contrat
+        $this->recordLog(
+            'suppression_contrat',
+            'contracts',
+            $contractId,
+            $oldValues,
+            null
+        );
 
         return redirect()->route('contracts.index')
                          ->with('success', 'Contrat supprimé avec succès.');

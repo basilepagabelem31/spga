@@ -6,27 +6,34 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Order;
 use App\Models\Contract;
+use App\Traits\LogsActivity; // Ajout de l'importation du trait
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class PartnerDashboardController extends Controller
 {
+    use LogsActivity; // Utilisation du trait pour le logging
+
     /**
      * Affiche le tableau de bord partenaire avec les données dynamiques.
-     *
-     * @return \Illuminate\View\View
      */
     public function index()
     {
-        // On récupère l'ID du partenaire à partir de l'utilisateur authentifié
         $partnerId = Auth::user()->partner->id;
 
-        // 1. Calcul du nombre total de produits du partenaire
+        // Log de l'accès au tableau de bord partenaire
+        $this->recordLog(
+            'acces_tableau_de_bord_partenaire',
+            'partners',
+            $partnerId,
+            null,
+            null
+        );
+
         $myTotalProducts = Product::where('provenance_type', 'producteur_partenaire')
                                  ->where('provenance_id', $partnerId)
                                  ->count();
 
-        // 2. Calcul du nombre de contrats actifs pour le partenaire
         $activeContractsCount = Contract::where('partner_id', $partnerId)
                                        ->where('start_date', '<=', now())
                                        ->where(function ($query) {
@@ -35,7 +42,6 @@ class PartnerDashboardController extends Controller
                                        })
                                        ->count();
         
-        // 3. Récupération des commandes récentes pour les produits de ce partenaire
         $myProductIds = Product::where('provenance_type', 'producteur_partenaire')
                                ->where('provenance_id', $partnerId)
                                ->pluck('id');
@@ -65,12 +71,20 @@ class PartnerDashboardController extends Controller
 
     /**
      * Affiche la liste des produits du partenaire.
-     *
-     * @return \Illuminate\View\View
      */
     public function products()
     {
         $partnerId = Auth::user()->partner->id;
+
+        // Log de l'accès à la liste des produits
+        $this->recordLog(
+            'acces_liste_produits_partenaire',
+            'products',
+            null,
+            ['partner_id' => $partnerId],
+            null
+        );
+        
         $products = Product::where('provenance_type', 'producteur_partenaire')
                            ->where('provenance_id', $partnerId)
                            ->get();
@@ -80,12 +94,20 @@ class PartnerDashboardController extends Controller
 
     /**
      * Affiche la liste des contrats du partenaire.
-     *
-     * @return \Illuminate\View\View
      */
     public function contracts()
     {
         $partnerId = Auth::user()->partner->id;
+
+        // Log de l'accès à la liste des contrats
+        $this->recordLog(
+            'acces_liste_contrats_partenaire',
+            'contracts',
+            null,
+            ['partner_id' => $partnerId],
+            null
+        );
+        
         $contracts = Contract::where('partner_id', $partnerId)->get();
         
         return view('partner.contracts.index', compact('contracts'));

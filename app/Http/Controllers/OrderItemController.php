@@ -6,12 +6,15 @@ use App\Models\OrderItem;
 use App\Models\Order;
 use App\Models\Product;
 use App\Services\StockService;
+use App\Traits\LogsActivity; // Ajout de l'importation du trait
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class OrderItemController extends Controller
 {
+    use LogsActivity; // Utilisation du trait pour le logging
+
     protected $stockService;
 
     public function __construct(StockService $stockService)
@@ -31,7 +34,7 @@ class OrderItemController extends Controller
             $query->where('order_id', $request->order_id);
         }
 
-        $orderItems = $query->paginate(10);
+        $orderItems = $query->paginate(8);
         return view('order_items.index', compact('orderItems'));
     }
 
@@ -69,19 +72,28 @@ class OrderItemController extends Controller
                 'unit_price_at_order' => $product->unit_price,
             ]);
 
+            // Mise à jour du total de la commande
+            $oldOrderValues = $order->toArray();
             $order->update(['total_amount' => $order->getTotalAmount()]);
+            $newOrderValues = $order->toArray();
 
-            // Si la commande est déjà "Terminée", on déduit immédiatement le stock du nouvel article
-            // if ($order->status === 'Terminée') {
-            //     $this->stockService->createStockMovement(
-            //         $orderItem->product_id,
-            //         $orderItem->quantity,
-            //         'sortie',
-            //         'MODIF_CMD_AJOUT_' . $order->order_code,
-            //         now(),
-            //         'Réajustement: ajout d\'un article sur commande terminée'
-            //     );
-            // }
+            // Log de la création de l'article de commande
+            $this->recordLog(
+                'creation_article_commande',
+                'order_items',
+                $orderItem->id,
+                null,
+                $orderItem->toArray()
+            );
+
+            // Log de la mise à jour du montant total de la commande
+            $this->recordLog(
+                'mise_a_jour_montant_total_commande',
+                'orders',
+                $order->id,
+                $oldOrderValues,
+                $newOrderValues
+            );
 
             // Envoyer la notification au fournisseur si le statut le justifie
             if (in_array($order->status, ['Validée', 'En préparation'])) {
@@ -122,13 +134,14 @@ class OrderItemController extends Controller
      */
     public function update(Request $request, OrderItem $orderItem)
     {
+        $oldValues = $orderItem->toArray(); // Capture des valeurs avant la mise à jour
+
         $request->validate([
             'order_id' => 'required|exists:orders,id',
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|numeric|min:0.01',
         ]);
 
-        $oldQuantity = $orderItem->quantity;
         $order = Order::findOrFail($orderItem->order_id);
         $product = Product::findOrFail($request->product_id);
 
@@ -142,34 +155,30 @@ class OrderItemController extends Controller
                 'sale_unit_at_order' => $product->sale_unit,
                 'unit_price_at_order' => $product->unit_price,
             ]);
-
+            $newValues = $orderItem->refresh()->toArray(); // Capture des nouvelles valeurs
+            
+            // Mise à jour du total de la commande
+            $oldOrderValues = $order->toArray();
             $order->update(['total_amount' => $order->getTotalAmount()]);
+            $newOrderValues = $order->toArray();
 
-            // Si la commande est "Terminée", on ajuste le stock
-            // if ($order->status === 'Terminée') {
-            //     $newQuantity = $request->quantity;
-            //     if ($newQuantity > $oldQuantity) {
-            //         $diff = $newQuantity - $oldQuantity;
-            //         $this->stockService->createStockMovement(
-            //             $orderItem->product_id,
-            //             $diff,
-            //             'sortie',
-            //             'MODIF_CMD_AUGMENTATION_' . $order->order_code,
-            //             now(),
-            //             'Réajustement: augmentation de quantité sur commande terminée'
-            //         );
-            //     } elseif ($newQuantity < $oldQuantity) {
-            //         $diff = $oldQuantity - $newQuantity;
-            //         $this->stockService->createStockMovement(
-            //             $orderItem->product_id,
-            //             $diff,
-            //             'entrée',
-            //             'MODIF_CMD_REDUCTION_' . $order->order_code,
-            //             now(),
-            //             'Réajustement: réduction de quantité sur commande terminée'
-            //         );
-            //     }
-            // }
+            // Log de la mise à jour de l'article de commande
+            $this->recordLog(
+                'mise_a_jour_article_commande',
+                'order_items',
+                $orderItem->id,
+                $oldValues,
+                $newValues
+            );
+
+            // Log de la mise à jour du montant total de la commande
+            $this->recordLog(
+                'mise_a_jour_montant_total_commande',
+                'orders',
+                $order->id,
+                $oldOrderValues,
+                $newOrderValues
+            );
 
             DB::commit();
             return redirect()->route('order_items.index')
@@ -186,24 +195,38 @@ class OrderItemController extends Controller
      */
     public function destroy(OrderItem $orderItem)
     {
+        $oldValues = $orderItem->toArray(); // Capture des valeurs avant la suppression
+        $orderItem_id = $orderItem->id;
+
         $order = Order::findOrFail($orderItem->order_id);
 
         try {
             DB::beginTransaction();
-            // Remettre le stock si la commande est "Terminée"
-            // if ($order->status === 'Terminée') {
-            //     $this->stockService->createStockMovement(
-            //         $orderItem->product_id,
-            //         $orderItem->quantity,
-            //         'entrée',
-            //         'MODIF_CMD_SUPPRESSION_' . $order->order_code,
-            //         now(),
-            //         'Réajustement: suppression d\'un article de commande terminée'
-            //     );
-            // }
             
             $orderItem->delete();
+            
+            // Mise à jour du total de la commande
+            $oldOrderValues = $order->toArray();
             $order->update(['total_amount' => $order->getTotalAmount()]);
+            $newOrderValues = $order->refresh()->toArray();
+
+            // Log de la suppression de l'article de commande
+            $this->recordLog(
+                'suppression_article_commande',
+                'order_items',
+                $orderItem_id,
+                $oldValues,
+                null
+            );
+
+            // Log de la mise à jour du montant total de la commande
+            $this->recordLog(
+                'mise_a_jour_montant_total_commande',
+                'orders',
+                $order->id,
+                $oldOrderValues,
+                $newOrderValues
+            );
 
             DB::commit();
             return redirect()->route('order_items.index')

@@ -3,19 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Models\Stock; // Importez le modèle Stock
+use App\Models\Stock;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-
+use App\Traits\LogsActivity; // Ajout du trait pour le logging
+use Illuminate\Support\Facades\Log; // Ajouté pour le débogage si nécessaire
 
 class PartnerManagedProductController extends Controller
 {
-    use AuthorizesRequests;
+    use AuthorizesRequests, LogsActivity; // Utilisation des traits
+
     /**
      * Display a listing of the products managed by the authenticated partner.
      *
@@ -26,12 +27,10 @@ class PartnerManagedProductController extends Controller
     {
         $partnerId = Auth::user()->partner->id;
         
-        // Commencer par une requête de base pour les produits du partenaire
         $query = Product::where('provenance_type', 'producteur_partenaire')
-                         ->where('provenance_id', $partnerId)
-                         ->with('category'); // Charge la relation 'category' pour l'affichage
+                        ->where('provenance_id', $partnerId)
+                        ->with('category');
         
-        // Appliquer les filtres si la requête les contient
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
@@ -49,8 +48,7 @@ class PartnerManagedProductController extends Controller
             $query->where('status', $request->input('status'));
         }
         
-        // Paginer les résultats pour éviter de charger trop de données à la fois
-        $products = $query->paginate(10);
+        $products = $query->paginate(8);
         $partnerId = Auth::user()->partner->id;
         $categories = Category::where('provenance_id', $partnerId)->get();
 
@@ -86,21 +84,19 @@ class PartnerManagedProductController extends Controller
             'min_order_quantity' => 'nullable|numeric|min:0',
             'unit_price' => 'required|numeric|min:0',
             'sale_unit' => 'required|string|max:50',
-            'current_stock_quantity' => 'nullable|numeric|min:0', // Ajout de la validation pour le stock
+            'current_stock_quantity' => 'nullable|numeric|min:0',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
             'status' => ['required', Rule::in(['disponible', 'indisponible'])],
-            'payment_modalities' => 'nullable|array', // On attend un tableau
+            'payment_modalities' => 'nullable|array',
             'estimated_harvest_quantity' => 'nullable|numeric|min:0',
             'estimated_harvest_period' => 'nullable|string|max:255',
-            'alert_threshold' => 'nullable|numeric|min:0', // Ajout de la validation pour le seuil d'alerte
+            'alert_threshold' => 'nullable|numeric|min:0',
         ]);
     
-        // Gérer le téléchargement de l'image
         if ($request->hasFile('image')) {
             $validatedData['image'] = $request->file('image')->store('products', 'public');
         }
 
-        // Convertir payment_modalities en JSON si c'est un tableau
         if (isset($validatedData['payment_modalities']) && is_array($validatedData['payment_modalities'])) {
             $validatedData['payment_modalities'] = json_encode($validatedData['payment_modalities']);
         } else {
@@ -110,7 +106,16 @@ class PartnerManagedProductController extends Controller
         $validatedData['provenance_type'] = 'producteur_partenaire';
         $validatedData['provenance_id'] = Auth::user()->partner->id;
         
-        Product::create($validatedData);
+        $product = Product::create($validatedData);
+
+        // Log de la création
+        $this->recordLog(
+            'creation_produit_partenaire',
+            'products',
+            $product->id,
+            null,
+            $product->toArray()
+        );
 
         return redirect()->route('partenaire.products')
                          ->with('success', 'Produit créé avec succès.');
@@ -124,7 +129,6 @@ class PartnerManagedProductController extends Controller
      */
     public function edit(Product $product)
     {
-        // Vérification de la propriété du produit
         $this->authorize('update', $product);
 
         $partnerId = Auth::user()->partner->id;
@@ -141,8 +145,8 @@ class PartnerManagedProductController extends Controller
      */
     public function update(Request $request, Product $product)
     {
-        // Vérification de la propriété du produit via une politique
         $this->authorize('update', $product);
+        $oldValues = $product->toArray(); // Capture des valeurs avant la mise à jour
         
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
@@ -162,25 +166,20 @@ class PartnerManagedProductController extends Controller
             'alert_threshold' => 'nullable|numeric|min:0',
         ]);
         
-        // Gérer le remplacement/suppression de l'image
         if ($request->hasFile('image')) {
-            // Supprimer l'ancienne image si elle existe
             if ($product->image) {
                 Storage::disk('public')->delete($product->image);
             }
             $validatedData['image'] = $request->file('image')->store('products', 'public');
         } elseif ($request->input('clear_image')) {
-            // Si la case 'supprimer l'image' est cochée
             if ($product->image) {
                 Storage::disk('public')->delete($product->image);
             }
             $validatedData['image'] = null;
         } else {
-            // Conserver le chemin de l'image existante
             $validatedData['image'] = $product->image;
         }
 
-        // Convertir payment_modalities en JSON si c'est un tableau
         if (isset($validatedData['payment_modalities']) && is_array($validatedData['payment_modalities'])) {
             $validatedData['payment_modalities'] = json_encode($validatedData['payment_modalities']);
         } else {
@@ -188,6 +187,16 @@ class PartnerManagedProductController extends Controller
         }
         
         $product->update($validatedData);
+        $newValues = $product->refresh()->toArray(); // Capture des nouvelles valeurs
+
+        // Log de la mise à jour
+        $this->recordLog(
+            'mise_a_jour_produit_partenaire',
+            'products',
+            $product->id,
+            $oldValues,
+            $newValues
+        );
 
         return redirect()->route('partenaire.products')
                          ->with('success', 'Produit mis à jour avec succès.');
@@ -201,66 +210,84 @@ class PartnerManagedProductController extends Controller
      */
     public function destroy(Product $product)
     {
-        // Vérification de la propriété du produit via une politique
         $this->authorize('delete', $product);
 
-        // Supprimer l'image associée si elle existe
+        $oldValues = $product->toArray(); // Capture des valeurs avant la suppression
+        $productId = $product->id;
+
         if ($product->image) {
             Storage::disk('public')->delete($product->image);
         }
         
         $product->delete();
 
+        // Log de la suppression
+        $this->recordLog(
+            'suppression_produit_partenaire',
+            'products',
+            $productId,
+            $oldValues,
+            null
+        );
+
         return redirect()->route('partenaire.products')
                          ->with('success', 'Produit supprimé avec succès.');
     }
 
+    /**
+     * Met à jour le stock d'un produit spécifique.
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Product  $product
+     * @return \Illuminate\Http\Response
+     */
+    public function updateStock(Request $request, Product $product)
+    {
+        $this->authorize('update', $product);
 
-
-
-   public function updateStock(Request $request, Product $product)
-{
-    // 1. Vérification de la propriété du produit via une politique
-    $this->authorize('update', $product);
-
-    // 2. Validation de la quantité de stock
-    $validatedData = $request->validate([
-        'quantity' => 'required|numeric|min:0', // <-- Le nom a été corrigé ici
-    ]);
-
-    // 3. Récupérer l'ancienne quantité pour déterminer le mouvement
-    $oldQuantity = $product->current_stock_quantity;
-    $newQuantity = $validatedData['quantity']; // <-- Et ici aussi
-
-    // 4. Déterminer la différence et le type de mouvement
-    $difference = $newQuantity - $oldQuantity;
-
-    // 5. Mettre à jour le statut du produit en fonction du nouveau stock
-    if ($newQuantity > 0) {
-        $product->status = 'disponible';
-    } else {
-        $product->status = 'indisponible';
-    }
-
-    // 6. Mettre à jour le stock et le statut du produit en une seule fois
-    $product->current_stock_quantity = $newQuantity;
-    $product->save();
-
-    if ($difference !== 0) {
-        $movementType = ($difference > 0) ? 'entrée' : 'sortie';
-        $quantity = abs($difference);
-
-        // 7. Créer un mouvement de stock dans la table 'stocks'
-        Stock::create([
-            'product_id' => $product->id,
-            'quantity' => $quantity,
-            'movement_type' => $movementType,
-            'user_id' => Auth::id(),
-            'reason' => 'Ajustement de stock par le partenaire',
-            'movement_date' => now(),
+        $validatedData = $request->validate([
+            'quantity' => 'required|numeric|min:0',
         ]);
-    }
 
-    return back()->with('success', 'Stock mis à jour avec succès.');
-}
+        $oldQuantity = $product->current_stock_quantity;
+        $newQuantity = $validatedData['quantity'];
+        $difference = $newQuantity - $oldQuantity;
+
+        $product->current_stock_quantity = $newQuantity;
+        $product->status = ($newQuantity > 0) ? 'disponible' : 'indisponible';
+        $product->save();
+
+        // Log de la mise à jour du stock du produit
+        $this->recordLog(
+            'mise_a_jour_stock_produit_partenaire',
+            'products',
+            $product->id,
+            ['old_stock' => $oldQuantity],
+            ['new_stock' => $newQuantity]
+        );
+
+        if ($difference !== 0) {
+            $movementType = ($difference > 0) ? 'entrée' : 'sortie';
+            $quantity = abs($difference);
+
+            $stock = Stock::create([
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+                'movement_type' => $movementType,
+                'user_id' => Auth::id(),
+                'reason' => 'Ajustement de stock par le partenaire',
+                'movement_date' => now(),
+            ]);
+
+            // Log de la création du mouvement de stock
+            $this->recordLog(
+                'creation_mouvement_stock_produit',
+                'stocks',
+                $stock->id,
+                null,
+                $stock->toArray()
+            );
+        }
+
+        return back()->with('success', 'Stock mis à jour avec succès.');
+    }
 }
