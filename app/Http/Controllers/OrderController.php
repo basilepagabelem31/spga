@@ -64,6 +64,15 @@ class OrderController extends Controller
             $query->whereIn('name', ['admin_principal', 'superviseur_commercial']);
         })->get();
 
+
+        if ($request->has('status') && $request->status == 'pending') {
+            $orders = Order::where('status', 'En attente de validation')->paginate(8)->withQueryString();
+        } else {
+            $orders = Order::paginate(8)->withQueryString();
+        }
+
+
+
         return view('orders.index', compact('orders', 'clients', 'statuses', 'products', 'validators'));
     }
 

@@ -32,11 +32,17 @@ class AdminController extends Controller
         $totalPartnerProducts = Product::where('provenance_type', 'producteur_partenaire')->count();
         $totalUsers = User::count();
         $totalPartners = Partner::count();
-        $pendingOrders = Order::where('status', 'pending')->count();
-        $outOfStockProducts = Stock::select('product_id')
-            ->groupBy('product_id')
-            ->havingRaw('SUM(quantity) = 0')
-            ->count();
+        
+        // Calcul des commandes en attente
+        $pendingOrders = Order::whereIn('status', ['En attente de validation'])->count();
+
+        // Calcul des produits en rupture de stock en fonction du seuil d'alerte
+        // On utilise un sous-select pour la somme des stocks et on filtre
+        // Produits en rupture de stock selon le seuil d'alerte
+        $outOfStockProducts = Product::whereNotNull('alert_threshold')
+                                        ->whereColumn('current_stock_quantity', '<=', 'alert_threshold')
+                                        ->count();
+
         
         $yearlyOrderData = DB::table('orders')
             ->join('order_items', 'orders.id', '=', 'order_items.order_id')
@@ -47,6 +53,9 @@ class AdminController extends Controller
             ->groupBy('year')
             ->orderBy('year', 'asc')
             ->get();
+
+
+
 
         return view('admin.dashboard', compact('totalUsers', 'totalPartners', 'pendingOrders', 'outOfStockProducts', 'totalPartnerProducts', 'totalProducts', 'yearlyOrderData'));
     }

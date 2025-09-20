@@ -47,12 +47,18 @@ class LowStockAlertNotification extends Notification
     /**
      * Obtient la représentation de la notification pour le canal de base de données.
      */
-    public function toDatabase(object $notifiable): array
-    {
-        return [
-            'type' => 'Alerte de stock bas',
-            'message' => "Le stock du produit '{$this->product->name}' est tombé en dessous du seuil d'alerte. Stock actuel : {$this->product->current_stock_quantity}.",
-            'product_id' => $this->product->id,
-        ];
-    }
+ public function toDatabase(object $notifiable): array
+{
+    return [
+        'type' => 'Alerte de stock bas',
+        'product_id' => $this->product->id,
+        'product_name' => $this->product->name,
+        'current_stock' => $this->product->current_stock_quantity,
+        'alert_threshold' => $this->product->alert_threshold,
+        'sale_unit' => $this->product->sale_unit,
+        // message facultatif
+        'message' => "Le stock du produit '{$this->product->name}' est tombé en dessous du seuil d'alerte. Stock actuel : {$this->product->current_stock_quantity}.",
+    ];
+}
+
 }

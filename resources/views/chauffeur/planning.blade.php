@@ -10,35 +10,36 @@
 
     {{-- Formulaire de filtres de recherche --}}
     <div class="card shadow-sm border-0 rounded-4 mb-4">
-<div class="card-body">
-    <form action="{{ route('chauffeur.planning') }}" method="GET" class="row g-3 align-items-end">
-        <div class="col-md-4">
-            <label for="filter_status" class="form-label">Statut</label>
-            <select name="status" id="filter_status" class="form-select">
-                <option value="">Tous les statuts</option>
-                @foreach (['planifiée', 'en_cours', 'terminée', 'annulée'] as $status)
-                    <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>
-                        {{ ucfirst(str_replace('_', ' ', $status)) }}
-                    </option>
-                @endforeach
-            </select>
+        <div class="card-body">
+            <form action="{{ route('chauffeur.planning') }}" method="GET" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="filter_status" class="form-label">Statut</label>
+                    <select name="status" id="filter_status" class="form-select">
+                        <option value="">Tous les statuts</option>
+                        @foreach (['planifiée', 'en_cours', 'terminée', 'annulée'] as $status)
+                            <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>
+                                {{ ucfirst(str_replace('_', ' ', $status)) }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="filter_date" class="form-label">Date de la tournée</label>
+                    <input type="date" name="delivery_date" id="filter_date" class="form-control" value="{{ request('delivery_date') }}">
+                </div>
+                <div class="col-md-4 d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-filter me-1"></i> Filtrer
+                    </button>
+                    <a href="{{ route('chauffeur.planning') }}" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i> Réinitialiser
+                    </a>
+                </div>
+            </form>
         </div>
-        <div class="col-md-4">
-            <label for="filter_date" class="form-label">Date de la tournée</label>
-            <input type="date" name="delivery_date" id="filter_date" class="form-control" value="{{ request('delivery_date') }}">
-        </div>
-        <div class="col-md-4 d-flex justify-content-end">
-            <button type="submit" class="btn btn-primary me-2">
-                <i class="fas fa-filter me-1"></i> Filtrer
-            </button>
-            <a href="{{ route('chauffeur.planning') }}" class="btn btn-secondary">
-                <i class="fas fa-times me-1"></i> Réinitialiser
-            </a>
-        </div>
-    </form>
-</div>
+    </div>
 
-    {{-- Votre tableau des tournées --}}
+    {{-- Tableau des tournées --}}
     <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -69,14 +70,19 @@
                                 </td>
                                 <td class="px-4 py-3">{{ $route->deliveries->count() }}</td>
                                 <td class="px-4 py-3 text-end">
-                                    <a href="{{ route('chauffeur.deliveries', ['route_id' => $route->id]) }}" class="btn btn-sm btn-primary">
+                                    <button class="btn btn-sm btn-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deliveriesModal"
+                                            data-route-url="{{ route('chauffeur.deliveries.modal', $route->id) }}">
                                         Voir les livraisons
-                                    </a>
+                                    </button>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="text-center py-5 text-muted">Aucune tournée de livraison n'est planifiée pour le moment.</td>
+                                <td colspan="4" class="text-center py-5 text-muted">
+                                    Aucune tournée de livraison n'est planifiée pour le moment.
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -84,9 +90,42 @@
             </div>
         </div>
 
- <div class="d-flex justify-content-center mt-4">
-        {{ $deliveryRoutes->links('vendor.pagination.bootstrap-5') }}
-    </div>  
+        <div class="d-flex justify-content-center mt-4">
+            {{ $deliveryRoutes->links('vendor.pagination.bootstrap-5') }}
+        </div>  
     </div>
 </div>
+
+{{-- Modal vide qui sera rempli via AJAX --}}
+<div class="modal fade" id="deliveriesModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+        <div class="modal-body text-center">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    </div>
+  </div>
+</div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const deliveriesModal = document.getElementById('deliveriesModal');
+
+    deliveriesModal.addEventListener('show.bs.modal', function (event) {
+        let button = event.relatedTarget;
+        let url = button.getAttribute('data-route-url');
+
+        let modalContent = deliveriesModal.querySelector('.modal-content');
+        modalContent.innerHTML = '<div class="modal-body text-center"><div class="spinner-border text-primary" role="status"></div></div>';
+
+        fetch(url)
+            .then(response => response.text())
+            .then(html => {
+                modalContent.innerHTML = html;
+            });
+    });
+});
+</script>
+@endpush

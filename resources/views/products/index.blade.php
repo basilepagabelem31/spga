@@ -1,242 +1,70 @@
-@extends('layouts.app') {{-- Assurez-vous d'avoir un layout principal --}}
+@extends('layouts.app')
 
 @section('content')
 
 <style>
-    /* Styles généraux pour le corps de la page */
-    body {
-        background-color: #f0f2f5; /* Couleur de fond douce */
-    }
-
-    /* Styles pour les boutons */
-    .btn {
-        border-radius: 0.75rem; /* Coins arrondis pour les boutons */
-        transition: all 0.3s ease; /* Transition douce pour les effets au survol */
-        font-weight: 500;
-    }
-
-    .btn-primary {
-        background-image: linear-gradient(to right, #6a11cb 0%, #2575fc 100%); /* Dégradé de couleur */
-        border: none;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Ombre douce */
-    }
-
-    .btn-primary:hover {
-        transform: translateY(-3px); /* Effet de léger soulèvement */
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-    }
-
-    .btn-outline-warning {
-        color: #ffc107;
-        border-color: #ffc107;
-    }
-    .btn-outline-warning:hover {
-        background-color: #ffc107;
-        color: #fff;
-    }
-
-    .btn-outline-danger {
-        color: #dc3545;
-        border-color: #dc3545;
-    }
-    .btn-outline-danger:hover {
-        background-color: #dc3545;
-        color: #fff;
-    }
-
-    .btn-outline-secondary {
-        color: #6c757d;
-        border-color: #6c757d;
-    }
-    .btn-outline-secondary:hover {
-        background-color: #6c757d;
-        color: #fff;
-    }
-
-    .btn-info {
-        background-color: #17a2b8;
-        border-color: #17a2b8;
-        color: #fff;
-    }
-    .btn-info:hover {
-        background-color: #138496;
-        border-color: #138496;
-    }
-
-
-    /* Styles pour les cartes (conteneur du tableau) */
-    .card {
-        border: none;
-        border-radius: 1.25rem; /* Coins arrondis plus prononcés */
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); /* Ombre plus douce et plus présente */
-        overflow: hidden; /* S'assure que les coins arrondis sont respectés par le contenu */
-    }
-
-    /* Styles pour le tableau */
-    .table {
-        margin-bottom: 0; /* Supprime la marge en bas du tableau */
-        width: 100%; /* S'assure que le tableau prend toute la largeur disponible */
-    }
-
-    .table-hover tbody tr:hover {
-        background-color: #e9ecef; /* Couleur de survol plus distincte */
-        transform: translateY(-2px) scale(1.005); /* Léger soulèvement et agrandissement au survol */
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* Ombre légère au survol */
-        transition: all 0.3s ease-in-out;
-    }
-
-    .table thead th {
-        border-bottom: 2px solid #dee2e6; /* Bordure plus prononcée pour l'en-tête */
-        padding: 1rem 1.5rem;
-        font-weight: 600;
-        color: #495057;
-        background-color: #f8f9fa; /* Fond légèrement grisé pour l'en-tête */
-        
-        /* Empêche le texte de l'en-tête de revenir à la ligne */
-        white-space: nowrap; 
-    }
-
-    .table tbody td {
-        padding: 1rem 1.5rem;
-        vertical-align: middle; /* Centre verticalement le contenu des cellules */
-    }
-
-    /* Badges */
-    .badge {
-        font-size: 0.85em;
-        padding: 0.5em 0.8em;
-        border-radius: 0.5rem;
-        font-weight: 600;
-    }
-
-    /* Conteneur des actions pour un meilleur alignement */
-    .btn-group {
-        display: flex;
-        gap: 0.5rem; /* Espacement entre les boutons */
-    }
-
-    /* Pagination */
-    .pagination .page-item .page-link {
-        border-radius: 0.5rem;
-        margin: 0 0.2rem;
-        color: #007bff;
-        border: 1px solid #dee2e6;
-    }
-
-    .pagination .page-item.active .page-link {
-        background-color: #007bff;
-        border-color: #007bff;
-        color: #fff;
-    }
-
-    /* Titre de la page */
-    h2 {
-        font-weight: 700;
-        color: #343a40;
-    }
-
-    /* Alertes */
-    .alert {
-        border-radius: 0.75rem;
-        font-weight: 500;
-    }
-
-    /* Tooltip customisation */
-    .tooltip-inner {
-        background-color: #343a40;
-        color: #fff;
-        border-radius: 0.5rem;
-        padding: 0.5rem 0.75rem;
-    }
-    .tooltip.bs-tooltip-top .tooltip-arrow::before {
-        border-top-color: #343a40;
-    }
-    .tooltip.bs-tooltip-bottom .tooltip-arrow::before {
-        border-bottom-color: #343a40;
-    }
-
-    /* Style pour les champs "Non renseigné" */
-    .text-not-set {
-        font-style: italic;
-        color: #888; /* Couleur grise pour indiquer que ce n'est pas renseigné */
-    }
-
-    /* Style pour les images de produit */
-    .product-thumbnail {
-        width: 50px;
-        height: 50px;
-        object-fit: cover;
-        border-radius: 0.5rem;
-        border: 1px solid #dee2e6;
-    }
-
-    /* Styles spécifiques pour les colonnes du tableau pour éviter le wrapping */
-    .table thead th:nth-child(1), /* Image */
-    .table tbody td:nth-child(1) {
-        min-width: 80px;
-    }
-    .table thead th:nth-child(2), /* Nom */
-    .table tbody td:nth-child(2) {
-        min-width: 150px; /* Assure un minimum de largeur pour le nom */
-    }
-
-    .table thead th:nth-child(3), /* Catégorie */
-    .table tbody td:nth-child(3) {
-        min-width: 120px;
-    }
-
-    .table thead th:nth-child(4), /* Provenance */
-    .table tbody td:nth-child(4) {
-        min-width: 180px;
-    }
-
-    .table thead th:nth-child(5), /* Mode Prod. */
-    .table tbody td:nth-child(5) {
-        min-width: 120px;
-    }
-
-    .table thead th:nth-child(6), /* Prix Unitaire */
-    .table tbody td:nth-child(6) {
-        min-width: 120px;
-    }
-
-    .table thead th:nth-child(7), /* Unité Vente */
-    .table tbody td:nth-child(7) {
-        min-width: 100px;
-    }
-    
-    .table thead th:nth-child(8), /* Stock Actuel */
-    .table tbody td:nth-child(8) {
-        min-width: 120px;
-    }
-
-    .table thead th:nth-child(9), /* Statut */
-    .table tbody td:nth-child(9) {
-        min-width: 100px;
-    }
-
-    .table thead th:nth-child(10), /* Actions */
-    .table tbody td:nth-child(10) {
-        min-width: 120px; /* Pour les boutons d'action */
-    }
+    body { background-color: #f0f2f5; }
+    .btn { border-radius: 0.75rem; transition: all 0.3s ease; font-weight: 500; }
+    .btn-primary { background-image: linear-gradient(to right, #6a11cb 0%, #2575fc 100%); border: none; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); }
+    .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); }
+    .btn-outline-warning { color: #ffc107; border-color: #ffc107; }
+    .btn-outline-warning:hover { background-color: #ffc107; color: #fff; }
+    .btn-outline-danger { color: #dc3545; border-color: #dc3545; }
+    .btn-outline-danger:hover { background-color: #dc3545; color: #fff; }
+    .btn-outline-secondary { color: #6c757d; border-color: #6c757d; }
+    .btn-outline-secondary:hover { background-color: #6c757d; color: #fff; }
+    .btn-info { background-color: #17a2b8; border-color: #17a2b8; color: #fff; }
+    .btn-info:hover { background-color: #138496; border-color: #138496; }
+    .card { border: none; border-radius: 1.25rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); overflow: hidden; }
+    .table { margin-bottom: 0; width: 100%; }
+    .table-hover tbody tr:hover { background-color: #e9ecef; transform: translateY(-2px) scale(1.005); box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); transition: all 0.3s ease-in-out; }
+    .table thead th { border-bottom: 2px solid #dee2e6; padding: 1rem 1.5rem; font-weight: 600; color: #495057; background-color: #f8f9fa; white-space: nowrap; }
+    .table tbody td { padding: 1rem 1.5rem; vertical-align: middle; }
+    .badge { font-size: 0.85em; padding: 0.5em 0.8em; border-radius: 0.5rem; font-weight: 600; }
+    .btn-group { display: flex; gap: 0.5rem; }
+    .pagination .page-item .page-link { border-radius: 0.5rem; margin: 0 0.2rem; color: #007bff; border: 1px solid #dee2e6; }
+    .pagination .page-item.active .page-link { background-color: #007bff; border-color: #007bff; color: #fff; }
+    h2 { font-weight: 700; color: #343a40; }
+    .alert { border-radius: 0.75rem; font-weight: 500; }
+    .tooltip-inner { background-color: #343a40; color: #fff; border-radius: 0.5rem; padding: 0.5rem 0.75rem; }
+    .tooltip.bs-tooltip-top .tooltip-arrow::before { border-top-color: #343a40; }
+    .tooltip.bs-tooltip-bottom .tooltip-arrow::before { border-bottom-color: #343a40; }
+    .text-not-set { font-style: italic; color: #888; }
+    .product-thumbnail { width: 50px; height: 50px; object-fit: cover; border-radius: 0.5rem; border: 1px solid #dee2e6; }
+    .table thead th:nth-child(1), .table tbody td:nth-child(1) { min-width: 80px; }
+    .table thead th:nth-child(2), .table tbody td:nth-child(2) { min-width: 150px; }
+    .table thead th:nth-child(3), .table tbody td:nth-child(3) { min-width: 120px; }
+    .table thead th:nth-child(4), .table tbody td:nth-child(4) { min-width: 180px; }
+    .table thead th:nth-child(5), .table tbody td:nth-child(5) { min-width: 120px; }
+    .table thead th:nth-child(6), .table tbody td:nth-child(6) { min-width: 120px; }
+    .table thead th:nth-child(7), .table tbody td:nth-child(7) { min-width: 100px; }
+    .table thead th:nth-child(8), .table tbody td:nth-child(8) { min-width: 120px; }
+    .table thead th:nth-child(9), .table tbody td:nth-child(9) { min-width: 100px; }
+    .table thead th:nth-child(10), .table tbody td:nth-child(10) { min-width: 120px; }
 </style>
 
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
         <h2 class="mb-2">📦 Gestion des Produits</h2>
         <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#createProductModal">
             <i class="fas fa-plus-circle me-1"></i> Ajouter un produit
         </button>
     </div>
 
+    {{-- Bouton Produits en rupture --}}
+    <div class="mb-3">
+        <a href="{{ route('products.index', ['filter' => 'out_of_stock']) }}" class="btn btn-outline-danger">
+            <i class="fas fa-exclamation-triangle me-1"></i> Produits en rupture
+        </a>
+    </div>
+
+    {{-- Alertes --}}
     @if (session('success'))
         <div class="alert alert-success shadow-sm">{{ session('success') }}</div>
     @endif
-
     @if (session('info'))
         <div class="alert alert-info shadow-sm">{{ session('info') }}</div>
     @endif
-    
     @if (session('error'))
         <div class="alert alert-danger shadow-sm">{{ session('error') }}</div>
     @endif
@@ -289,6 +117,9 @@
         </div>
     </form>
 
+    @if(request('filter') === 'out_of_stock')
+        <h4 class="mb-3 text-danger">⚠️ Produits en rupture de stock</h4>
+    @endif
 
     <div class="card shadow rounded-4">
         <div class="card-body p-0">
@@ -303,7 +134,7 @@
                             <th>Mode Prod.</th>
                             <th>Prix Unitaire</th>
                             <th>Unité Vente</th>
-                            <th>Stock Actuel</th> {{-- NOUVEAU --}}
+                            <th>Stock Actuel</th>
                             <th>Statut</th>
                             <th class="text-end pe-4">Actions</th>
                         </tr>
@@ -334,13 +165,17 @@
                                 <td>{{ $product->sale_unit }}</td>
                                 <td>
                                     @if ($product->current_stock_quantity !== null)
-                                        <span class="badge {{ $product->isLowStock() ? 'bg-warning text-dark' : 'bg-success' }}">
+                                        <span class="badge 
+                                            @if($product->current_stock_quantity === 0) bg-danger
+                                            @elseif($product->isLowStock()) bg-warning text-dark
+                                            @else bg-success
+                                            @endif">
                                             {{ number_format($product->current_stock_quantity, 2, ',', ' ') }} {{ $product->sale_unit }}
                                         </span>
                                     @else
                                         <span class="text-not-set">N/A</span>
                                     @endif
-                                </td> {{-- NOUVEAU --}}
+                                </td>
                                 <td>
                                     @if ($product->status === 'disponible')
                                         <span class="badge bg-success">Disponible</span>
@@ -350,12 +185,9 @@
                                 </td>
                                 <td class="text-end pe-4">
                                     <div class="btn-group" role="group">
-                                        <!-- Modifier -->
                                         <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editProductModal{{ $product->id }}" title="Modifier le produit">
                                             <i class="fas fa-edit"></i>
                                         </button>
-
-                                        <!-- Supprimer -->
                                         <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteProductModal{{ $product->id }}" title="Supprimer le produit">
                                             <i class="fas fa-trash-alt"></i>
                                         </button>
@@ -363,13 +195,12 @@
                                 </td>
                             </tr>
 
-                            {{-- Modales pour chaque produit --}}
                             @include('products.partials.edit_modal', ['product' => $product, 'categories' => $categories, 'partners' => $partners])
                             @include('products.partials.delete_modal', ['product' => $product])
 
                         @empty
                             <tr>
-                                <td colspan="10" class="text-center text-muted py-4">Aucun produit trouvé.</td> {{-- Colonnes ajustées --}}
+                                <td colspan="10" class="text-center text-muted py-4">Aucun produit trouvé.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -383,10 +214,8 @@
     </div>
 </div>
 
-{{-- Modale d'ajout de produit --}}
 @include('products.partials.create_modal', ['categories' => $categories, 'partners' => $partners])
 
-{{-- Script pour initialiser les tooltips Bootstrap --}}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))

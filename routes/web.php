@@ -209,6 +209,8 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth', 'role:chauffeur'])->group(function () {
     Route::get('/chauffeur/dashboard', [ChauffeurController::class, 'index'])->name('chauffeur.dashboard');
     Route::get('chauffeur/livraisons', [ChauffeurController::class, 'deliveries'])->name('chauffeur.deliveries');
+    Route::get('chauffeur/deliveries/modal/{route}', [ChauffeurController::class, 'deliveriesModal'])
+    ->name('chauffeur.deliveries.modal');
     Route::get('chauffeur/planning', [ChauffeurController::class, 'planning'])->name('chauffeur.planning');
     Route::put('chauffeur/deliveries/{delivery}/complete', [ChauffeurController::class, 'completeDelivery'])->name('chauffeur.deliveries.complete');
 

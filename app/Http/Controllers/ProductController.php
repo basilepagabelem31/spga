@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Partner;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Traits\LogsActivity; // Ajout de l'importation du trait
 use Illuminate\Support\Facades\Log; // Ajouté pour le débogage si nécessaire
@@ -18,41 +19,53 @@ class ProductController extends Controller
     /**
      * Affiche la liste des produits avec des options de filtrage et de recherche.
      */
-    public function index(Request $request)
-    {
-        $query = Product::with('category', 'partners');
+public function index(Request $request)
+{
+    $query = Product::with('category', 'partners');
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhere('description', 'like', '%' . $search . '%');
-            });
-        }
-
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
-        }
-
-        if ($request->filled('provenance_type')) {
-            $query->where('provenance_type', $request->provenance_type);
-        }
-
-        if ($request->filled('production_mode')) {
-            $query->where('production_mode', $request->production_mode);
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        $products = $query->paginate(8)->withQueryString();
-        
-        $categories = Category::all();
-        $partners = Partner::all();
-
-        return view('products.index', compact('products', 'categories', 'partners'));
+    // Filtre de recherche
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function($q) use ($search) {
+            $q->where('name', 'like', '%' . $search . '%')
+              ->orWhere('description', 'like', '%' . $search . '%');
+        });
     }
+
+    // Filtrage par catégorie
+    if ($request->filled('category_id')) {
+        $query->where('category_id', $request->category_id);
+    }
+
+    // Filtrage par provenance
+    if ($request->filled('provenance_type')) {
+        $query->where('provenance_type', $request->provenance_type);
+    }
+
+    // Filtrage par mode de production
+    if ($request->filled('production_mode')) {
+        $query->where('production_mode', $request->production_mode);
+    }
+
+    // Filtrage par statut
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+    }
+
+    // ✅ Filtre produits en rupture de stock
+    if ($request->input('filter') === 'out_of_stock') {
+        $query->whereNotNull('alert_threshold')
+              ->whereColumn('current_stock_quantity', '<=', 'alert_threshold');
+    }
+
+    $products = $query->paginate(8)->withQueryString();
+    
+    $categories = Category::all();
+    $partners = Partner::all();
+
+    return view('products.index', compact('products', 'categories', 'partners'));
+}
+
 
     /**
      * Affiche le formulaire de création d'un nouveau produit.

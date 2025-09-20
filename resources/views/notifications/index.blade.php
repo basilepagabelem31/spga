@@ -29,23 +29,57 @@
                     </thead>
                     <tbody>
                         @forelse ($notifications as $notification)
-                            <tr class="{{ $notification->isRead() ? 'table-light text-muted' : 'fw-bold' }}">
+                            @php
+                                $data = $notification->data ?? [];
+                            @endphp
+                            <tr class="{{ $notification->read_at ? 'table-light text-muted' : 'fw-bold' }}">
+                                <!-- Statut -->
                                 <td>
-                                    @if ($notification->isRead())
+                                    @if ($notification->read_at)
                                         <i class="fas fa-envelope-open text-secondary me-2" title="Lue"></i> Lue
                                     @else
                                         <i class="fas fa-envelope text-primary me-2" title="Non lue"></i> Non lue
                                     @endif
                                 </td>
-                                <td>{{ $notification->type }}</td>
-                                <td>{{ Str::limit($notification->message, 100) }}</td>
+
+                                <!-- Type -->
+                                <td>{{ class_basename($notification->type) }}</td>
+
+                                <!-- Message principal -->
+                                <td>{{ Str::limit($data['message'] ?? '—', 100) }}</td>
+
+                                <!-- Détails spécifiques -->
+                                <!-- <td>
+                                    @if ($notification->type === 'App\Notifications\LowStockAlertNotification')
+                                        Produit: {{ $data['product_name'] ?? '—' }}<br>
+                                        Stock actuel: {{ $data['current_stock'] ?? '—' }} {{ $data['sale_unit'] ?? '' }}<br>
+                                        Seuil d’alerte: {{ $data['alert_threshold'] ?? '—' }}
+                                    @elseif ($notification->type === 'App\Notifications\DeliveryRouteAssigned')
+                                        Tournée ID: {{ $data['delivery_route_id'] ?? '—' }}<br>
+                                        Date livraison: {{ isset($data['delivery_date']) ? \Carbon\Carbon::parse($data['delivery_date'])->format('d/m/Y') : '—' }}<br>
+                                        Statut: {{ $data['status'] ?? '—' }}
+                                    @elseif ($notification->type === 'App\Notifications\ResetPasswordNotification')
+                                        Instruction: {{ $data['message'] ?? 'Réinitialisation de mot de passe disponible' }}
+                                    @elseif ($notification->type === 'App\Notifications\DeliveryCompletedNotification')
+                                        Message: {{ $data['message'] ?? 'Tournée complétée' }}
+                                    @else
+                                        — {{-- Pour d'autres types non gérés encore --}}
+                                    @endif
+                                </td> -->
+
+                                <!-- Date de réception -->
                                 <td>{{ $notification->created_at->format('d/m/Y H:i') }}</td>
+
+                                <!-- Actions -->
                                 <td class="text-end pe-4">
                                     <div class="btn-group" role="group">
+                                        <!-- Voir détails -->
                                         <a href="{{ route('notifications.show', $notification) }}" class="btn btn-sm btn-outline-info" title="Voir les détails">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        @if (!$notification->isRead())
+
+                                        <!-- Marquer comme lu si non lu -->
+                                        @if (!$notification->read_at)
                                             <form action="{{ route('notifications.markAsRead', $notification) }}" method="POST" class="d-inline">
                                                 @csrf
                                                 <button type="submit" class="btn btn-sm btn-outline-success" title="Marquer comme lu">
@@ -53,17 +87,22 @@
                                                 </button>
                                             </form>
                                         @endif
+
+                                        <!-- Supprimer -->
                                         <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteNotificationModal{{ $notification->id }}" title="Supprimer">
                                             <i class="fas fa-trash-alt"></i>
                                         </button>
                                     </div>
                                 </td>
                             </tr>
+
                             {{-- Inclusion de la modale de suppression --}}
                             @include('notifications.partials.delete_modal', ['notification' => $notification])
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-4">Vous n'avez aucune notification pour le moment.</td>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    Vous n'avez aucune notification pour le moment.
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -72,9 +111,15 @@
         </div>
     </div>
 
+    <!-- Pagination -->
     <div class="d-flex justify-content-center mt-4">
         {{ $notifications->links('vendor.pagination.bootstrap-5') }}
     </div>
 </div>
 
 @endsection
+
+
+
+
+

@@ -79,6 +79,10 @@ class ChauffeurController extends Controller
             null
         );
 
+
+
+
+
         $query = Delivery::query();
 
         // On s'assure que seules les livraisons du chauffeur connecté sont affichées
@@ -86,10 +90,17 @@ class ChauffeurController extends Controller
             $q->where('driver_id', $driverId);
         })->with('order.client', 'deliveryRoute'); // On charge la relation deliveryRoute
 
+
+                // Filtrer par route_id si présent
+        if ($request->filled('route_id')) {
+        $query->where('delivery_route_id', $request->input('route_id'));
+        }
+
         // Filtre par statut (inchangé)
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
+
 
         // CORRECTION : Le filtre de date pour les LIVRAISONS se fait sur la date de livraison effective (delivered_at)
         if ($request->filled('delivered_at')) {
@@ -102,6 +113,23 @@ class ChauffeurController extends Controller
 
         return view('chauffeur.deliveries', compact('deliveries'));
     }
+
+
+
+    public function deliveriesModal(DeliveryRoute $route)
+    {
+    $driverId = Auth::id();
+
+    // Vérifier que la tournée appartient bien au chauffeur connecté
+    if ($route->driver_id !== $driverId) {
+        abort(403, "Accès non autorisé");
+    }
+
+    $deliveries = $route->deliveries()->with('order.client')->get();
+
+    return view('chauffeur.partials.deliveries_modal', compact('route', 'deliveries'));
+    }
+
 
     /**
      * Marque une livraison comme terminée.

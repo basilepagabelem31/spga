@@ -65,9 +65,10 @@
                     </div>
                 </div>
                 <div class="card-footer d-flex align-items-center justify-content-between small">
-                    <a class="text-white stretched-link text-decoration-none" href="{{ route('orders.index') }}">
-                        Voir les commandes
-                    </a>
+                    <a class="text-white stretched-link text-decoration-none" href="{{ route('orders.index', ['status' => 'pending']) }}">
+    Voir les commandes
+</a>
+
                     <div class="text-white"><i class="fas fa-angle-right"></i></div>
                 </div>
             </div>
@@ -86,9 +87,9 @@
                     </div>
                 </div>
                 <div class="card-footer d-flex align-items-center justify-content-between small">
-                    <a class="text-white stretched-link text-decoration-none" href="{{ route('stocks.index') }}">
-                        Gérer les stocks
-                    </a>
+                    <a class="text-white stretched-link text-decoration-none" href="{{ route('products.index', ['filter' => 'out_of_stock']) }}">
+                            Gérer les stocks</a>
+
                     <div class="text-white"><i class="fas fa-angle-right"></i></div>
                 </div>
             </div>
