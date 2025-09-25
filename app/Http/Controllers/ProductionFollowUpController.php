@@ -93,14 +93,7 @@ class ProductionFollowUpController extends Controller
     ]);
 
 
-    // $coords = $this->geolocalisation->geocode($request->address);
-    // dd($coords);
-    // dd(env('GOOGLE_MAPS_API_KEY'));
-    $geo = new \App\Services\Geolocalisation();
-    $coords = $geo->geocode('350 5th Ave, New York, NY 10118, United States');
-    dd($coords);
-
-    // Log de la création
+  
     $this->recordLog(
         'creation_suivi_production',
         'production_follow_ups',

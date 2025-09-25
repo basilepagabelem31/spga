@@ -31,11 +31,11 @@ class Geolocalisation
 
         if (($data['status'] ?? null) !== 'OK') {
             // Tu peux utiliser dd() temporairement pour debugger
-            dd([
-                'status' => $data['status'] ?? null,
-                'error_message' => $data['error_message'] ?? null,
-                'address' => $address
-            ]);
+            // dd([
+            //     'status' => $data['status'] ?? null,
+            //     'error_message' => $data['error_message'] ?? null,
+            //     'address' => $address
+            // ]);
         }
 
         if (isset($data['results'][0]['geometry']['location'])) {
