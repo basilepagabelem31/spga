@@ -170,6 +170,15 @@ public function updateAvailabilityStatus(): void
     }
 }
 
+
+
+    // Dans Product.php
+public function getCurrentStockQuantityAttribute(): float
+{
+    return (float) $this->stocks()->sum('quantity');
+}
+
+
     /**
      * Envoie une notification de stock faible aux administrateurs et au fournisseur concerné.
      */

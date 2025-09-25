@@ -56,6 +56,9 @@
                             <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Client</th>
                             <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Adr. Livraison</th>
                             <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Adr. Client</th>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Email</th>
+                            <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Téléphone</th>
+
                             <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Géolocalisation</th>
                             <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Date souhaitée</th>
                             <th scope="col" class="px-4 py-3 text-uppercase fw-bold text-muted text-nowrap">Date planifiée</th>
@@ -71,6 +74,9 @@
                             <td class="px-4 py-3 text-gray-700 text-nowrap">{{ $delivery->order->client->name ?? 'N/A' }}</td>
                             <td class="px-4 py-3 text-gray-700 text-nowrap">{{ $delivery->order->delivery_location ?? 'N/A' }}</td>
                             <td class="px-4 py-3 text-gray-700 text-nowrap">{{ $delivery->order->client->address ?? 'N/A' }}</td>
+                            <td class="px-4 py-3 text-gray-700 text-nowrap">{{ $delivery->order->client->email ?? 'N/A' }}</td>
+                            <td class="px-4 py-3 text-gray-700 text-nowrap">{{ $delivery->order->client->phone_number ?? 'N/A' }}</td>
+
                             <td class="px-4 py-3 text-gray-700 text-nowrap">{{ $delivery->order->geolocation ?? 'N/A' }}</td>
                             {{-- Affichage de la date souhaitée du client --}}
                             <td class="px-4 py-3 text-gray-700 text-nowrap">

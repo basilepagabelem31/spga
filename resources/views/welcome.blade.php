@@ -354,7 +354,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body text-center">
-                <img src="{{asset('images/agriculture/clien.jpg')}}" class="img-fluid rounded-4 mb-4" alt="Image pour les Grossistes">
+                <img src="{{asset('images/agriculture/grossisteclient.jpg')}}" class="img-fluid rounded-4 mb-4" alt="Image pour les Grossistes">
                 <h3 class="fw-bold text-primary mb-3">Nos Clients Grossistes</h3>
                 <p class="lead text-muted">
                     La chaîne d'approvisionnement est un élément clé. Nous leur fournissons les outils pour gérer leurs commandes en gros, suivre les livraisons et accéder à des rapports détaillés.

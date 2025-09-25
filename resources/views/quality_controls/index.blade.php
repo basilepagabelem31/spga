@@ -27,9 +27,9 @@
                             <th>Produit</th>
                             <th>Référence du lot</th>
                             <th>Résultat</th>
-                            <th>Signature</th> <th class="text-end pe-4">Actions</th>
-
+                            <th>Signature</th> 
                             <th class="text-end pe-4">Actions</th>
+
                         </tr>
                     </thead>
                     <tbody>

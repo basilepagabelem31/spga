@@ -32,6 +32,13 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <div class="mb-3">
+                                <label for="address" class="form-label">Adresse complète du terrain <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="address" name="address" value="{{ old('address', $followUp->address) }}" required>
+                                </div>
+
+
                                 <div class="mb-3">
                                     <label for="producer_name" class="form-label">Nom du producteur</label>
                                     <input type="text" class="form-control" id="producer_name" name="producer_name" value="{{ old('producer_name', $followUp->producer_name) }}">

@@ -135,15 +135,19 @@ class ClientController extends Controller
      */
     public function products(Request $request)
     {
-        $query = Product::available();
+        $query = Product::available()->get()
+            ->filter(function ($product) {
+            return $product->current_stock_quantity > ($product->alert_threshold ?? 0);
+        });
 
         if ($request->filled('search')) {
             $searchTerm = '%' . $request->input('search') . '%';
             $query->where('name', 'like', $searchTerm);
         }
 
-        $products = $query->paginate(10);
-
+        $products = Product::where('status', 'disponible')
+            ->whereColumn('current_stock_quantity', '>', 'alert_threshold')
+            ->paginate(10);
         // Log de l'accès au catalogue
         $this->recordLog(
             'acces_catalogue_produits',
@@ -158,7 +162,30 @@ class ClientController extends Controller
 
     /**
      * Traite et enregistre une nouvelle commande.
+     * 
+     * 
+     * 
      */
+
+
+    public function createOrder()
+    {
+        $products = Product::where('status', 'disponible')
+            ->whereColumn('current_stock_quantity', '>', 'alert_threshold')
+            ->get();        
+        // Journalisation de l'accès au formulaire de création de commande
+        $this->recordLog(
+            'acces_formulaire_commande',
+            null,
+            null,
+            ['client_id' => Auth::id()],
+            null
+        );
+
+        return view('client.orders.create', compact('products'));
+    }
+
+    
     public function storeOrder(Request $request)
     {
         $validatedData = $request->validate([

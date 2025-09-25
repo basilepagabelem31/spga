@@ -3,10 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>SPGA-SARL</title>
 
-    <title>{{ config('app.name', 'Laravel') }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
+      <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
@@ -15,8 +15,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @stack('styles')
-</head>
+    </head>
 <body class="bg-light">
 
     @if (auth()->check())
@@ -25,8 +24,8 @@
                 @include('layouts.navigation')
             </div>
 
-            <div id="page-content-wrapper" class="flex-grow-1">
-                <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
+            <div id="page-content-wrapper">
+                <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm navbar-dashboard">
                     <div class="container-fluid">
                         <button class="btn btn-primary d-md-none" id="sidebarToggle"><i class="fas fa-bars"></i></button>
                         <a class="navbar-brand d-md-none" href="#">{{ config('app.name', 'Laravel') }}</a>
@@ -52,7 +51,7 @@
                         </div>
                     </div>
                 </nav>
-
+                
                 <div class="container-fluid py-4">
                     @yield('content')
                 </div>
@@ -64,8 +63,8 @@
         </div>
     @endif
 
-
     <script>
+        // La logique pour le bouton de toggle
         document.getElementById('sidebarToggle').addEventListener('click', function () {
             document.getElementById('wrapper').classList.toggle('toggled');
         });

@@ -2,75 +2,102 @@
 @import "bootstrap/dist/css/bootstrap.min.css";
 
 /* ================================
-   Layout principal
+   Layout principal (pour le dashboard)
+   Utilise une approche fixe pour la navigation.
 ================================== */
-#wrapper {
-    display: flex;
-    overflow-x: hidden;
-    /* Correction : Laisser la hauteur s'adapter au contenu */
-}
-
-/* ================================
-   Sidebar (barre latérale)
-================================== */
-#sidebar-wrapper {
-    flex-shrink: 0;
-    width: 250px;
-    background-color: #f8f9fa;
-    border-right: 1px solid #dee2e6;
-    transition: margin-left .25s ease-in-out;
-}
-
-/* ================================
-   Contenu principal
-================================== */
-#page-content-wrapper {
-    flex-grow: 1;
-    padding: 0;
-    overflow-x: hidden;
-    width: 100%;
-}
-
-/* ================================
-   Comportement responsive
-================================== */
-/* Pour les écrans plus petits que 768px (mobile) */
-@media (max-width: 767.98px) {
-    #sidebar-wrapper {
-        margin-left: -250px; /* Masque la sidebar par défaut */
-        position: fixed;
-        z-index: 1030;
-        height: 100vh;
-        overflow-y: auto;
-    }
-
-    #wrapper.toggled #sidebar-wrapper {
-        margin-left: 0; /* Affiche la sidebar quand toggled */
-    }
-
-    #page-content-wrapper {
-        margin-left: 0;
-    }
-}
-
-/* Pour les écrans plus larges que 768px */
 @media (min-width: 768px) {
-    #sidebar-wrapper {
-        /* Correction : Laisser la hauteur s'adapter au contenu */
+    #wrapper {
+        display: flex;
         min-height: 100vh;
-        margin-left: 0; /* Garde la sidebar visible */
+        overflow-x: hidden;
     }
 
-    #page-content-wrapper {
-        margin-left: 0;
+    #sidebar-wrapper {
+        position: fixed; /* Reste fixe sur le côté */
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 1030;
+        width: 250px;
+        overflow-y: auto;
+        background-color: #212529 !important;
+        color: #f8f9fa !important;
+        transition: left .25s ease-in-out;
+    }
+
+    /* La navbar supérieure s'ajuste pour laisser de la place à la sidebar */
+    .navbar-dashboard {
+        position: fixed;
+        top: 0;
+        left: 250px;
+        right: 0;
+        z-index: 1020;
+        transition: left .25s ease-in-out;
         width: calc(100% - 250px);
     }
-
-    #wrapper.toggled #sidebar-wrapper {
-        margin-left: -250px;
+    
+    #page-content-wrapper {
+        flex-grow: 1;
+        padding-top: 56px; /* Espace pour la navbar fixe */
+        margin-left: 250px; /* Espace pour la sidebar fixe */
+        width: auto;
+        overflow-x: hidden;
     }
 
+    /* Comportement 'toggled' pour les grands écrans */
+    #wrapper.toggled #sidebar-wrapper {
+        left: -250px;
+    }
+    #wrapper.toggled .navbar-dashboard,
     #wrapper.toggled #page-content-wrapper {
+        margin-left: 0;
+        left: 0;
         width: 100%;
     }
 }
+
+/* ================================
+   Layout principal (pour les écrans mobiles)
+   La sidebar est fixe et se superpose.
+================================== */
+@media (max-width: 767.98px) {
+    #sidebar-wrapper {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: -250px; /* Cachée par défaut */
+        z-index: 1030;
+        height: 100vh;
+        overflow-y: auto;
+        background-color: #212529 !important;
+        color: #f8f9fa !important;
+        transition: left .25s ease-in-out;
+    }
+    
+    #wrapper.toggled #sidebar-wrapper {
+        left: 0; /* Affiche la sidebar */
+    }
+
+    /* Pas de marge pour le contenu en mode mobile */
+    #page-content-wrapper {
+        margin-left: 0;
+    }
+}
+
+
+/* ================================
+   Styles de la page d'accueil (restent inchangés)
+================================== */
+/* Collez ici le reste de votre code CSS pour la page d'accueil,
+   qui ne concerne pas les IDs #wrapper, #sidebar-wrapper, etc. */
+.hero-section {
+    background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("{{ asset('images/agriculture/agr1.jpg') }}") no-repeat center center;
+    background-size: cover;
+    background-attachment: fixed;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+/* ... le reste de vos styles pour la page d'accueil ... */
